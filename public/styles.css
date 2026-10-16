@@ -19,6 +19,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,sans-serif;line-height:1.45;-webkit-tap-highlight-color:transparent}
 .wrap{max-width:720px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) 16px 120px}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
@@ -147,3 +148,4 @@ legend{font-size:.8rem;color:var(--muted);padding:0 6px}
 .log .lt{font-family:"JetBrains Mono",monospace;font-size:.75rem;color:var(--muted);flex:none;width:62px}
 .log .lx{flex:1;min-width:0;overflow-wrap:anywhere}
 .log .xp{font-family:"JetBrains Mono",monospace;font-size:.78rem;color:var(--xp)}
+.banner .banner-btns{display:flex;gap:6px;flex:none}

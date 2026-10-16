@@ -1,5 +1,5 @@
 // Quest Log service worker: offline app shell + notification clicks.
-const CACHE = "quest-log-v6";
+const CACHE = "quest-log-v7";
 const CONFIG = "quest-log-config";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];

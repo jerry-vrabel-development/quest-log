@@ -597,7 +597,8 @@ async function enableNotifications() {
 function updateNotifUI() {
   const p = hasNotif ? Notification.permission : "unsupported";
   const anyScheduled = S.quests.some((q) => q.due && !q.done && q.remind >= 0);
-  $("#notifBanner").hidden = !(p === "default" && anyScheduled);
+  let dismissed = false; try { dismissed = localStorage.getItem("quest-log-notif-dismissed") === "1"; } catch (e) {}
+  $("#notifBanner").hidden = !(p === "default" && anyScheduled) || dismissed;
   $("#notifStatus").textContent = p === "granted" ? "On. For reminders when the app is fully closed, also export to your calendar."
     : p === "denied" ? "Blocked in your browser settings. Use calendar export instead."
     : p === "unsupported" ? "Not supported here. Use calendar export instead." : "Off.";
@@ -605,6 +606,7 @@ function updateNotifUI() {
   updateSyncUI();
 }
 $("#enableNotif").onclick = enableNotifications;
+$("#dismissNotif").onclick = () => { try { localStorage.setItem("quest-log-notif-dismissed", "1"); } catch (e) {} updateNotifUI(); };
 $("#notifBtn2").onclick = enableNotifications;
 
 /* ---------- calendar export (.ics with alarms) ---------- */

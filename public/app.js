@@ -93,6 +93,38 @@ const LOOT = {
   ],
 };
 
+const MOODS = [
+  { v: 1, e: "😞", label: "Rough" },
+  { v: 2, e: "😕", label: "Low" },
+  { v: 3, e: "😐", label: "Okay" },
+  { v: 4, e: "🙂", label: "Good" },
+  { v: 5, e: "😄", label: "Great" },
+];
+const MOOD_XP = 5; // same reward whatever the mood: honesty is the quest
+
+// Badges: each check gets computed stats. Order = display order.
+const BADGES = [
+  ["first-step", "🥾", "First Step", "Complete your first quest", (s) => s.quests >= 1],
+  ["thaw", "🧊", "Thaw", "Use the Frozen? button", (s) => s.freezes >= 1],
+  ["check-in", "🫀", "Honest Check-in", "Log your mood for the first time", (s) => s.moodDays >= 1],
+  ["low-day-hero", "🛡️", "Low-Day Hero", "Finish a quest on a day you logged Rough or Low", (s) => s.lowDayWins >= 1],
+  ["ten-down", "🔟", "Ten Down", "Complete 10 quests", (s) => s.quests >= 10],
+  ["bash-bff", "🐕", "Bash's Best Friend", "Complete 10 Bash quests", (s) => (s.byCat["Bash"] || 0) >= 10],
+  ["streak-3", "🔥", "Kindling", "3-day streak", (s) => s.bestStreak >= 3],
+  ["mood-week", "📓", "Self-Aware", "Log your mood on 7 different days", (s) => s.moodDays >= 7],
+  ["streak-7", "🔥", "Campfire", "7-day streak", (s) => s.bestStreak >= 7],
+  ["career-10", "💼", "Career Climber", "Complete 10 Career quests", (s) => (s.byCat["Career"] || 0) >= 10],
+  ["collector", "🎒", "Collector", "Collect 25 loot items", (s) => s.loot >= 25],
+  ["level-5", "⭐", "Level 5", "Reach level 5", (s) => s.level >= 5],
+  ["fifty", "🏅", "Half Century", "Complete 50 quests", (s) => s.quests >= 50],
+  ["lucky", "👑", "Lucky", "Find a legendary drop", (s) => s.legendary >= 1],
+  ["streak-14", "🔥", "Bonfire", "14-day streak", (s) => s.bestStreak >= 14],
+  ["mood-month", "🗓️", "Steady Witness", "Log your mood on 30 different days", (s) => s.moodDays >= 30],
+  ["level-10", "🌟", "Level 10", "Reach level 10", (s) => s.level >= 10],
+  ["centurion", "🏛️", "Centurion", "Complete 100 quests", (s) => s.quests >= 100],
+  ["streak-30", "☀️", "Sunrise", "30-day streak", (s) => s.bestStreak >= 30],
+];
+
 /* ---------- state ---------- */
 let S;
 function fresh() {
@@ -102,11 +134,19 @@ function fresh() {
     due: q.due || "", time: q.time || "", repeat: q.repeat || "none", remind: 0,
     done: false, doneAt: null, count: 0,
   }));
-  return { v: 2, quests, xp: 0, inv: [], dry: 0, nextId: id + 1, days: [], theme: "" };
+  return { v: 3, quests, xp: 0, inv: [], dry: 0, nextId: id + 1, days: [], theme: "", log: [], moods: [], badges: {} };
 }
 function load() {
   try { const r = localStorage.getItem(KEY); S = r ? JSON.parse(r) : fresh(); } catch (e) { S = fresh(); }
-  S.days = S.days || [];
+  upgrade();
+}
+function upgrade() {
+  if (!S.log) { // first run on v3: backfill the log from quests already finished
+    S.log = S.quests.filter((q) => q.done && q.doneAt)
+      .map((q) => ({ t: "quest", id: q.id, name: q.name, g: q.g, xp: q.xp, at: q.doneAt, day: ymd(new Date(q.doneAt)) }))
+      .sort((a, b) => b.at - a.at);
+  }
+  S.days = S.days || []; S.moods = S.moods || []; S.badges = S.badges || {};
 }
 function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 function save() { S.updatedAt = Date.now(); saveLocal(); scheduleSync(); }
@@ -145,13 +185,19 @@ function gain(xp) {
   const after = level(S.xp).l;
   const it = xp > 0 ? roll() : null;
   if (xp > 0) markActiveDay();
+  const badges = xp > 0 ? checkBadges() : [];
   save(); render();
-  if (after > before) toast("level up", `Level ${after}!`, "You're moving. Keep it gentle.");
-  else if (it) toast(it.rar, it.n, it.d);
-  else if (xp > 0) toast(`+${xp} xp`, "Nice.", "No drop this time. The next one might be big.");
+  const q = [];
+  if (after > before) q.push(["level up", `Level ${after}!`, "You're moving. Keep it gentle."]);
+  if (it) q.push([it.rar, it.n, it.d]);
+  badges.forEach((b) => q.push(["badge", `${b.icon} ${b.name}`, b.desc]));
+  if (!q.length && xp > 0) q.push([`+${xp} xp`, "Nice.", "No drop this time. The next one might be big."]);
+  toastQueue(q);
 }
 
 function complete(q, checked) {
+  if (checked) logEvent({ t: "quest", id: q.id, name: q.name, g: q.g, xp: q.xp });
+  else { const i = S.log.findIndex((e) => e.t === "quest" && e.id === q.id); if (i >= 0) S.log.splice(i, 1); }
   if (q.repeat !== "none" && q.due && checked) {
     q.count = (q.count || 0) + 1;
     q.due = nextOccurrence(q);
@@ -163,15 +209,63 @@ function complete(q, checked) {
   gain(checked ? q.xp : -q.xp);
 }
 
+/* ---------- activity log, stats, badges ---------- */
+function logEvent(e) {
+  S.log.unshift({ at: Date.now(), day: today(), ...e });
+  S.log = S.log.slice(0, 3000);
+}
+function bestStreak() {
+  const days = [...new Set(S.days)].sort();
+  let best = 0, run = 0, prev = null;
+  for (const d of days) { run = prev && addDays(prev, 1) === d ? run + 1 : 1; best = Math.max(best, run); prev = d; }
+  return best;
+}
+function moodByDay() {
+  const m = {}; // last check-in of each day wins
+  [...S.moods].sort((a, b) => a.at - b.at).forEach((x) => { m[x.day] = x; });
+  return m;
+}
+function computeStats() {
+  const quests = S.log.filter((e) => e.t === "quest");
+  const byCat = {}, xpByDay = {}, countByDay = {};
+  quests.forEach((e) => { byCat[e.g || "Other"] = (byCat[e.g || "Other"] || 0) + 1; countByDay[e.day] = (countByDay[e.day] || 0) + 1; });
+  S.log.forEach((e) => { if (e.xp) xpByDay[e.day] = (xpByDay[e.day] || 0) + e.xp; });
+  const moods = moodByDay();
+  const lowDayWins = quests.filter((e) => moods[e.day] && moods[e.day].v <= 2).length;
+  return {
+    quests: quests.length, freezes: S.log.filter((e) => e.t === "freeze").length,
+    moodDays: Object.keys(moods).length, lowDayWins, byCat, xpByDay, countByDay,
+    bestStreak: Math.max(bestStreak(), streak()), loot: S.inv.length,
+    legendary: S.inv.filter((i) => i.rar === "legendary").length, level: level(S.xp).l,
+  };
+}
+function checkBadges() {
+  const st = computeStats(), earned = [];
+  for (const [id, icon, name, desc, test] of BADGES) {
+    if (!S.badges[id] && test(st)) { S.badges[id] = Date.now(); earned.push({ id, icon, name, desc }); logEvent({ t: "badge", name }); }
+  }
+  return earned;
+}
+
 /* ---------- toast ---------- */
 let tt;
 function toast(rar, ttl, d) {
-  const color = rar === "legendary" ? "legend" : rar in LOOT ? rar : "accent";
+  const color = rar === "legendary" ? "legend" : rar === "badge" ? "epic" : rar in LOOT ? rar : "accent";
   const t = $("#trar"); t.textContent = rar; t.style.color = `var(--${color})`;
   $("#tttl").textContent = ttl; $("#td").textContent = d;
   const el = $("#toast"); el.classList.add("show");
   clearTimeout(tt);
-  tt = setTimeout(() => el.classList.remove("show"), rar === "legendary" || rar === "epic" ? 6000 : 3500);
+  tt = setTimeout(() => el.classList.remove("show"), rar === "legendary" || rar === "epic" || rar === "badge" ? 6000 : 3500);
+}
+let tq = [], tqTimer;
+function toastQueue(items) {
+  tq.push(...items); if (tqTimer) return;
+  const next = () => {
+    const it = tq.shift(); if (!it) { tqTimer = null; return; }
+    toast(...it);
+    tqTimer = setTimeout(next, it[0] === "legendary" || it[0] === "epic" || it[0] === "badge" ? 6200 : 3700);
+  };
+  next();
 }
 
 /* ---------- rendering ---------- */
@@ -220,6 +314,7 @@ function render() {
   const open = S.quests.filter((q) => !q.done);
 
   if (view === "now") {
+    box.append(moodCard());
     const over = open.filter((q) => q.due && q.due < t).sort(byTime);
     const tod = open.filter((q) => q.due === t).sort(byTime);
     const anytime = open.filter((q) => !q.due);
@@ -252,9 +347,156 @@ function render() {
       grid.append(d);
     });
     box.append(grid);
+  } else if (view === "journey") {
+    renderJourney(box);
   }
   updateNotifUI();
 }
+
+/* ---------- mood check-in ---------- */
+function moodCard() {
+  const t = today(), todays = S.moods.filter((m) => m.day === t);
+  const last = todays[todays.length - 1];
+  const card = el("div", "mood-card");
+  const head = el("div", "mood-head");
+  head.append(el("b", "", last ? "Today's mood" : "How are you right now?"));
+  if (last) head.append(el("span", "hint", `Checked in ${new Date(last.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Tap to update.`));
+  else head.append(el("span", "hint", `+${MOOD_XP} XP for any honest answer.`));
+  card.append(head);
+  const row = el("div", "mood-row");
+  MOODS.forEach((m) => {
+    const b = el("button", "mood-btn" + (last && last.v === m.v ? " on" : ""));
+    b.type = "button"; b.setAttribute("aria-label", m.label);
+    b.append(el("span", "em", m.e), el("span", "lb", m.label));
+    b.onclick = () => logMood(m.v);
+    row.append(b);
+  });
+  card.append(row);
+  if (last && last.v <= 2) {
+    card.append(el("p", "mood-care", "Thanks for being honest. On days like this, one tiny quest is plenty: water, food, or a few minutes outside with Bash. If it gets heavy, call or text 988."));
+  }
+  return card;
+}
+function logMood(v) {
+  const t = today(), first = !S.moods.some((m) => m.day === t);
+  const note = (prompt("Anything you want to remember about today? (optional)") || "").trim().slice(0, 280);
+  S.moods.push({ at: Date.now(), day: t, v, note });
+  logEvent({ t: "mood", v, note, xp: first ? MOOD_XP : 0 });
+  if (first) gain(MOOD_XP); else { const b = checkBadges(); save(); render(); toastQueue(b.map((x) => ["badge", `${x.icon} ${x.name}`, x.desc])); }
+}
+
+/* ---------- journey: stats, charts, badges, records, log ---------- */
+function renderJourney(box) {
+  const st = computeStats(), t = today();
+  const tiles = el("div", "tiles");
+  [["Quests done", st.quests], ["Best streak", st.bestStreak + (st.bestStreak === 1 ? " day" : " days")],
+   ["Loot found", st.loot], ["Badges", `${Object.keys(S.badges).length}/${BADGES.length}`]]
+    .forEach(([k, v]) => { const d = el("div", "tile"); d.append(el("span", "tv", String(v)), el("span", "tk", k)); tiles.append(d); });
+  box.append(tiles);
+
+  // last 14 days
+  const days = []; for (let i = 13; i >= 0; i--) days.push(addDays(t, -i));
+  const lbl = (d) => parseYmd(d).toLocaleDateString(undefined, { weekday: "narrow" });
+  const full = (d) => parseYmd(d).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+
+  box.append(el("h3", "", "XP per day · last 14 days"));
+  const max = Math.max(10, ...days.map((d) => st.xpByDay[d] || 0));
+  const bars = el("div", "chart bars");
+  days.forEach((d) => {
+    const v = st.xpByDay[d] || 0, col = el("div", "col");
+    col.tabIndex = 0;
+    const tip = `${full(d)}: ${v} XP, ${st.countByDay[d] || 0} quests`;
+    col.title = tip; col.setAttribute("aria-label", tip); col.dataset.tip = tip;
+    const bar = el("i", "bar-mark"); bar.style.height = v ? Math.max(4, (v / max) * 100) + "%" : "0";
+    col.append(bar, el("span", "x" + (d === t ? " now" : ""), lbl(d)));
+    bars.append(col);
+  });
+  box.append(bars);
+
+  const moods = moodByDay();
+  box.append(el("h3", "", "Mood · last 14 days"));
+  if (!Object.keys(moods).length) box.append(el("div", "empty", "No check-ins yet. Use the mood card on the Now tab."));
+  else {
+    const mc = el("div", "chart moods");
+    days.forEach((d) => {
+      const m = moods[d], col = el("div", "col");
+      col.tabIndex = 0;
+      const tip = m ? `${full(d)}: ${MOODS[m.v - 1].label}${m.note ? " · " + m.note : ""}` : `${full(d)}: no check-in`;
+      col.title = tip; col.setAttribute("aria-label", tip); col.dataset.tip = tip;
+      const dot = el("i", "dot" + (m ? "" : " none")); if (m) dot.style.bottom = ((m.v - 1) / 4) * 100 + "%";
+      const lane = el("div", "lane"); lane.append(dot);
+      col.append(lane, el("span", "x" + (d === t ? " now" : ""), lbl(d)));
+      mc.append(col);
+    });
+    const ax = el("div", "mood-axis"); ax.append(el("span", "", "😄"), el("span", "", "😐"), el("span", "", "😞"));
+    const wrap = el("div", "mood-wrap"); wrap.append(ax, mc); box.append(wrap);
+    // mood vs activity insight
+    const withQ = [], without = [];
+    Object.entries(moods).forEach(([d, m]) => ((st.countByDay[d] || 0) > 0 ? withQ : without).push(m.v));
+    if (withQ.length >= 3 && without.length >= 3) {
+      const avg = (a) => (a.reduce((x, y) => x + y, 0) / a.length).toFixed(1);
+      box.append(el("p", "insight", `Average mood on days you finished a quest: ${avg(withQ)} / 5. On days you didn't: ${avg(without)} / 5.`));
+    }
+  }
+
+  box.append(el("h3", "", "Badges"));
+  const bg = el("div", "badges");
+  BADGES.forEach(([id, icon, name, desc]) => {
+    const got = S.badges[id], b = el("div", "badge" + (got ? " got" : ""));
+    b.append(el("span", "bi", got ? icon : "🔒"), el("b", "", name), el("small", "", got ? `Earned ${new Date(got).toLocaleDateString()}` : desc));
+    bg.append(b);
+  });
+  box.append(bg);
+
+  box.append(el("h3", "", "Hall of fame · your best days"));
+  const best = Object.entries(st.xpByDay).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  if (!best.length) box.append(el("div", "empty", "Your best days will show up here. The only person on this leaderboard is you."));
+  else {
+    const ol = el("ol", "fame");
+    best.forEach(([d, v], i) => { const li = el("li", d === t ? "now" : ""); li.append(el("span", "rk", ["🥇", "🥈", "🥉", "4", "5"][i]), el("span", "", full(d)), el("b", "", `${v} XP`)); ol.append(li); });
+    box.append(ol);
+  }
+
+  if (Object.keys(st.byCat).length) {
+    box.append(el("h3", "", "Quests by area"));
+    const cmax = Math.max(...Object.values(st.byCat));
+    const cats = el("div", "cats");
+    Object.entries(st.byCat).sort((a, b) => b[1] - a[1]).forEach(([c, n]) => {
+      const r = el("div", "cat"); const tr = el("div", "track"); const f = el("i"); f.style.width = (n / cmax) * 100 + "%"; tr.append(f);
+      r.append(el("span", "cn", c), tr, el("span", "cv", String(n))); cats.append(r);
+    });
+    box.append(cats);
+  }
+
+  box.append(el("h3", "", "Activity log"));
+  if (!S.log.length) box.append(el("div", "empty", "Everything you do will be logged here."));
+  const ul = el("ul", "log");
+  let lastDay = "";
+  S.log.slice(0, 60).forEach((e) => {
+    if (e.day !== lastDay) { lastDay = e.day; ul.append(el("li", "log-day", e.day === t ? "Today" : full(e.day))); }
+    const time = new Date(e.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const text = e.t === "quest" ? `✓ ${e.name}` : e.t === "freeze" ? "🧊 Broke the freeze" : e.t === "badge" ? `🏅 Badge: ${e.name}`
+      : e.t === "mood" ? `${MOODS[e.v - 1].e} Mood: ${MOODS[e.v - 1].label}${e.note ? " · " + e.note : ""}` : e.t;
+    const li = el("li"); li.append(el("span", "lt", time), el("span", "lx", text)); if (e.xp) li.append(el("span", "xp", "+" + e.xp));
+    ul.append(li);
+  });
+  box.append(ul);
+}
+
+// shared tooltip for chart columns (hover, focus or tap)
+const chartTip = document.createElement("div"); chartTip.className = "chart-tip"; chartTip.hidden = true; document.body.append(chartTip);
+function showTip(e) {
+  const c = e.target.closest && e.target.closest(".chart .col"); if (!c) return;
+  const r = c.getBoundingClientRect();
+  chartTip.textContent = c.dataset.tip; chartTip.hidden = false;
+  chartTip.style.left = Math.min(Math.max(r.left + r.width / 2, 130), innerWidth - 130) + "px";
+  chartTip.style.top = r.top - 6 + "px";
+}
+const hideTip = () => (chartTip.hidden = true);
+document.addEventListener("pointerover", showTip);
+document.addEventListener("focusin", showTip);
+document.addEventListener("pointerout", (e) => { if (e.target.closest && e.target.closest(".chart .col")) hideTip(); });
+document.addEventListener("scroll", hideTip, { passive: true });
 
 /* ---------- editor ---------- */
 let editing = null;
@@ -410,7 +652,7 @@ $("#importFile").onchange = async (e) => {
     const data = JSON.parse(await file.text());
     if (!Array.isArray(data.quests)) throw new Error("bad file");
     if (!confirm("Replace your current quests, XP and loot with this backup?")) return;
-    S = data; S.days = S.days || [];
+    S = data; upgrade();
     S.quests.forEach((q) => { q.due = q.due || ""; q.time = q.time || ""; q.repeat = q.repeat || "none"; q.remind = q.remind ?? 0; });
     S.nextId = Math.max(S.nextId || 1, ...S.quests.map((q) => q.id + 1));
     save(); pushState(true); applyTheme(); render(); toast("restored", "Backup loaded", `${S.quests.length} quests, ${S.xp} XP.`);
@@ -450,7 +692,7 @@ async function pullState() {
     if (!res.ok) return setSyncState("error");
     const remote = await res.json();
     if ((remote.updatedAt || 0) > (S.updatedAt || 0)) {
-      S = remote.state; S.days = S.days || []; S.updatedAt = remote.updatedAt;
+      S = remote.state; upgrade(); S.updatedAt = remote.updatedAt;
       saveLocal(); applyTheme(); render();
     } else if ((remote.updatedAt || 0) < (S.updatedAt || 0)) {
       await pushState();
@@ -531,7 +773,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) pull
 /* ---------- wiring ---------- */
 document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => { view = b.dataset.view; render(); }));
 $("#addBtn").onclick = () => openEditor(null);
-$("#freeze").onclick = () => gain(5);
+$("#freeze").onclick = () => { logEvent({ t: "freeze", xp: 5 }); gain(5); };
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); checkReminders(); } });
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {

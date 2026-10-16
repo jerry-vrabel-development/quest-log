@@ -1,5 +1,6 @@
 // Quest Log — Cloudflare Worker
-// Serves the PWA (static assets), syncs state to D1, and sends Web Push reminders from a cron.
+// Serves the PWA (static assets), syncs state to D1, sends Web Push reminders from a cron,
+// and exposes an OAuth-protected MCP server at /mcp so Claude can manage quests.
 //
 // Push design: the cron writes the notification text to an "outbox" table and sends an
 // EMPTY push (no payload, so no payload encryption needed). The service worker wakes up,
@@ -8,9 +9,15 @@
 const MAX_STATE_BYTES = 1_000_000;
 const REMINDER_GRACE_MS = 6 * 3600_000; // stop nagging 6h after the due time
 
-export default {
+import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
+import { handleMcp } from "./mcp.js";
+import { handleAuthorize } from "./authorize.js";
+
+// The app itself: static PWA, sync API and the OAuth consent page.
+const app = {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    if (url.pathname === "/authorize") return handleAuthorize(req, env);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     try {
       return await api(req, env, url);
@@ -19,7 +26,34 @@ export default {
       return json({ error: "server_error" }, 500);
     }
   },
+};
 
+// OAuth 2.1 in front of /mcp (the Claude connector). One provider per origin, so the
+// connector works on both the workers.dev URL and a custom domain.
+const providers = new Map();
+function providerFor(origin) {
+  if (!providers.has(origin)) {
+    providers.set(origin, new OAuthProvider({
+      apiRoute: "/mcp",
+      apiHandler: { fetch: handleMcp },
+      defaultHandler: app,
+      authorizeEndpoint: "/authorize",
+      tokenEndpoint: "/oauth/token",
+      clientRegistrationEndpoint: "/oauth/register",
+      clientIdMetadataDocumentEnabled: true,
+      scopesSupported: ["quests", "offline_access"],
+      requiredScopes: ["quests"],
+      refreshTokenIdleTTL: 60 * 86400, // stay connected while in use
+      resourceMetadata: { resource: `${origin}/mcp`, authorization_servers: [origin], resource_name: "Quest Log" },
+    }));
+  }
+  return providers.get(origin);
+}
+
+export default {
+  fetch(req, env, ctx) {
+    return providerFor(new URL(req.url).origin).fetch(req, env, ctx);
+  },
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runReminders(env, Date.now()));
   },

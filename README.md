@@ -1,6 +1,6 @@
 # Quest Log (Cloudflare edition)
 
-A gamified, ADHD-friendly quest tracker with scheduling, device sync and real push reminders that fire even when the app is closed. It runs entirely on Cloudflare's free tier: Workers + static assets + D1 + a cron trigger.
+A gamified, ADHD-friendly quest tracker with scheduling, device sync, real push reminders that fire even when the app is closed, mood tracking, badges, and a **Claude connector** (remote MCP server with OAuth 2.1) so an AI assistant can add, schedule and complete quests from a conversation. It runs entirely on Cloudflare's free tier: Workers + static assets + D1 + KV + a cron trigger.
 
 ## How it works
 - **`public/`** is the PWA: plain HTML/CSS/JS, no build step.
@@ -11,6 +11,30 @@ A gamified, ADHD-friendly quest tracker with scheduling, device sync and real pu
   - `POST /api/test-push` sends a test notification
 - **Cron (every 5 min)** finds due reminders in each user's time zone, queues them once, and sends an **empty Web Push** (VAPID-signed). The service worker wakes up, fetches the outbox and shows the notifications. Because the push has no payload, no encryption library is needed.
 - **No login.** The app generates a private **sync code**. The server stores only its SHA-256 hash. Paste the code into a second device to link it. Treat it like a password.
+
+## Claude connector (MCP)
+
+`/mcp` is a remote MCP server (Streamable HTTP, stateless JSON-RPC) behind OAuth 2.1, implemented with [`@cloudflare/workers-oauth-provider`](https://github.com/cloudflare/workers-oauth-provider):
+
+- **Discovery:** unauthenticated calls get `401` with a `resource_metadata` pointer (RFC 9728); authorization server metadata per RFC 8414.
+- **Client registration:** Dynamic Client Registration (RFC 7591) and Client ID Metadata Documents.
+- **Sign-in:** `/authorize` is a consent page where the user enters their Quest Log **sync code**; it's hashed and matched against D1, and the grant stores only that hash.
+- **Tokens:** PKCE (S256), 1-hour access tokens, rotating refresh tokens with a 60-day idle lifetime. Tokens are stored hashed in KV.
+
+| Tool | What it does |
+|---|---|
+| `list_quests` | Now / upcoming / all / done views, with ids |
+| `add_quests` | Add up to 25 quests at once; `done: true` records something already finished |
+| `complete_quest` | Completes by id; repeating quests roll forward |
+| `update_quest` | Rename, reschedule, change the tiny step, etc. |
+| `delete_quest` | Delete by id (marked destructive) |
+| `log_mood` | 1–10 check-in with an optional note |
+| `get_summary` | Level, streak, quests and mood per day over N days |
+
+Gamification stays in the client: XP is added server-side, but the variable-ratio **loot roll and badge checks happen when the app next opens** (`state.rewards`), so the reward still lands where the user sees it.
+
+### Connect it to Claude
+Settings → Connectors → **Add custom connector** → URL `https://<your-worker-host>/mcp` → Connect → enter your sync code (app: Settings → Show sync code). Custom connectors need a paid Claude plan.
 
 ## Deploy (about 15 minutes)
 
@@ -25,12 +49,15 @@ npx wrangler login                 # opens the browser, sign in to Cloudflare
 npx wrangler d1 create quest-log   # copy the database_id it prints into wrangler.jsonc
 npm run db:init                    # creates the tables
 
-# 2. Push keys
+# 2. OAuth storage for the Claude connector
+npx wrangler kv namespace create OAUTH_KV   # answer "no" if asked to add it; paste the id into wrangler.jsonc
+
+# 3. Push keys
 npm run vapid                      # prints a public key and a private key
 #    -> paste the public key into wrangler.jsonc (vars.VAPID_PUBLIC_KEY)
 npx wrangler secret put VAPID_PRIVATE_JWK   # paste the private key JSON when asked
 
-# 3. Ship it
+# 4. Ship it
 npm run deploy                     # prints your https://quest-log.<you>.workers.dev URL
 ```
 

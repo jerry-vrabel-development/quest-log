@@ -247,6 +247,16 @@ function checkBadges() {
   return earned;
 }
 
+// Quests completed through the Claude connector already have their XP; roll their loot here.
+function processRewards() {
+  if (!S.rewards || !S.rewards.length) return;
+  const items = S.rewards.splice(0);
+  const q = [["claude", `${items.length} quest${items.length === 1 ? "" : "s"} completed with Claude`, items.map((r) => r.name).join(" · ")]];
+  items.forEach(() => { const it = roll(); if (it) q.push([it.rar, it.n, it.d]); });
+  checkBadges().forEach((b) => q.push(["badge", `${b.icon} ${b.name}`, b.desc]));
+  save(); render(); toastQueue(q);
+}
+
 /* ---------- toast ---------- */
 let tt;
 function toast(rar, ttl, d) {
@@ -478,7 +488,7 @@ function renderJourney(box) {
   S.log.slice(0, 60).forEach((e) => {
     if (e.day !== lastDay) { lastDay = e.day; ul.append(el("li", "log-day", e.day === t ? "Today" : full(e.day))); }
     const time = new Date(e.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    const text = e.t === "quest" ? `✓ ${e.name}` : e.t === "freeze" ? "🧊 Broke the freeze" : e.t === "badge" ? `🏅 Badge: ${e.name}`
+    const text = e.t === "quest" ? `✓ ${e.name}${e.via === "claude" ? " · via Claude" : ""}` : e.t === "freeze" ? "🧊 Broke the freeze" : e.t === "badge" ? `🏅 Badge: ${e.name}`
       : e.t === "mood" ? `◐ Mood ${e.v}/10 · ${MOODS[e.v - 1].label}${e.note ? " · " + e.note : ""}` : e.t;
     const li = el("li"); li.append(el("span", "lt", time), el("span", "lx", text)); if (e.xp) li.append(el("span", "xp", "+" + e.xp));
     ul.append(li);
@@ -696,7 +706,7 @@ async function pullState() {
     const remote = await res.json();
     if ((remote.updatedAt || 0) > (S.updatedAt || 0)) {
       S = remote.state; upgrade(); S.updatedAt = remote.updatedAt;
-      saveLocal(); applyTheme(); render();
+      saveLocal(); applyTheme(); render(); processRewards();
     } else if ((remote.updatedAt || 0) < (S.updatedAt || 0)) {
       await pushState();
     }
@@ -783,7 +793,7 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
-load(); applyTheme(); render();
+load(); applyTheme(); render(); processRewards();
 writeSwConfig(); pullState();
 checkReminders();
 setInterval(checkReminders, 30000);

@@ -93,13 +93,10 @@ const LOOT = {
   ],
 };
 
-const MOODS = [
-  { v: 1, e: "😞", label: "Rough" },
-  { v: 2, e: "😕", label: "Low" },
-  { v: 3, e: "😐", label: "Okay" },
-  { v: 4, e: "🙂", label: "Good" },
-  { v: 5, e: "😄", label: "Great" },
-];
+// 1-10 scale. The ends are bookends: you can always go lower, and 10 is mostly theoretical.
+const MOODS = ["Bottom", "Awful", "Rough", "Low", "Meh", "Okay", "Decent", "Good", "Great", "Peak"]
+  .map((label, i) => ({ v: i + 1, label }));
+const MOOD_MAX = 10, MOOD_LOW = 4; // 4 and under counts as a low day
 const MOOD_XP = 5; // same reward whatever the mood: honesty is the quest
 
 // Badges: each check gets computed stats. Order = display order.
@@ -107,7 +104,7 @@ const BADGES = [
   ["first-step", "🥾", "First Step", "Complete your first quest", (s) => s.quests >= 1],
   ["thaw", "🧊", "Thaw", "Use the Frozen? button", (s) => s.freezes >= 1],
   ["check-in", "🫀", "Honest Check-in", "Log your mood for the first time", (s) => s.moodDays >= 1],
-  ["low-day-hero", "🛡️", "Low-Day Hero", "Finish a quest on a day you logged Rough or Low", (s) => s.lowDayWins >= 1],
+  ["low-day-hero", "🛡️", "Low-Day Hero", "Finish a quest on a day your mood was 4 or under", (s) => s.lowDayWins >= 1],
   ["ten-down", "🔟", "Ten Down", "Complete 10 quests", (s) => s.quests >= 10],
   ["bash-bff", "🐕", "Bash's Best Friend", "Complete 10 Bash quests", (s) => (s.byCat["Bash"] || 0) >= 10],
   ["streak-3", "🔥", "Kindling", "3-day streak", (s) => s.bestStreak >= 3],
@@ -146,7 +143,10 @@ function upgrade() {
       .map((q) => ({ t: "quest", id: q.id, name: q.name, g: q.g, xp: q.xp, at: q.doneAt, day: ymd(new Date(q.doneAt)) }))
       .sort((a, b) => b.at - a.at);
   }
-  S.days = S.days || []; S.moods = S.moods || []; S.badges = S.badges || {};
+  S.days = S.days || [];
+  // v3 moods were 1-5; spread them onto 1-10 (1→1, 2→3, 3→5, 4→7, 5→9)
+  (S.moods || []).forEach((m) => { if (!m.s) { m.v = m.v * 2 - 1; m.s = 10; } });
+  (S.log || []).forEach((e) => { if (e.t === "mood" && !e.s) { e.v = e.v * 2 - 1; e.s = 10; } }); S.moods = S.moods || []; S.badges = S.badges || {};
 }
 function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 function save() { S.updatedAt = Date.now(); saveLocal(); scheduleSync(); }
@@ -231,7 +231,7 @@ function computeStats() {
   quests.forEach((e) => { byCat[e.g || "Other"] = (byCat[e.g || "Other"] || 0) + 1; countByDay[e.day] = (countByDay[e.day] || 0) + 1; });
   S.log.forEach((e) => { if (e.xp) xpByDay[e.day] = (xpByDay[e.day] || 0) + e.xp; });
   const moods = moodByDay();
-  const lowDayWins = quests.filter((e) => moods[e.day] && moods[e.day].v <= 2).length;
+  const lowDayWins = quests.filter((e) => moods[e.day] && moods[e.day].v <= MOOD_LOW).length;
   return {
     quests: quests.length, freezes: S.log.filter((e) => e.t === "freeze").length,
     moodDays: Object.keys(moods).length, lowDayWins, byCat, xpByDay, countByDay,
@@ -365,14 +365,17 @@ function moodCard() {
   card.append(head);
   const row = el("div", "mood-row");
   MOODS.forEach((m) => {
-    const b = el("button", "mood-btn" + (last && last.v === m.v ? " on" : ""));
-    b.type = "button"; b.setAttribute("aria-label", m.label);
-    b.append(el("span", "em", m.e), el("span", "lb", m.label));
+    const b = el("button", "mood-btn" + (last && last.v === m.v ? " on" : ""), String(m.v));
+    b.type = "button"; b.setAttribute("aria-label", `${m.v} out of 10, ${m.label}`); b.title = m.label;
+    b.style.setProperty("--lvl", (m.v - 1) / 9);
     b.onclick = () => logMood(m.v);
     row.append(b);
   });
   card.append(row);
-  if (last && last.v <= 2) {
+  const ends = el("div", "mood-ends");
+  ends.append(el("span", "", "1 · can always go lower"), el("span", "now-label", last ? `${last.v} · ${MOODS[last.v - 1].label}` : ""), el("span", "", "10 · theoretical"));
+  card.append(ends);
+  if (last && last.v <= MOOD_LOW) {
     card.append(el("p", "mood-care", "Thanks for being honest. On days like this, one tiny quest is plenty: water, food, or a few minutes outside with Bash. If it gets heavy, call or text 988."));
   }
   return card;
@@ -380,8 +383,8 @@ function moodCard() {
 function logMood(v) {
   const t = today(), first = !S.moods.some((m) => m.day === t);
   const note = (prompt("Anything you want to remember about today? (optional)") || "").trim().slice(0, 280);
-  S.moods.push({ at: Date.now(), day: t, v, note });
-  logEvent({ t: "mood", v, note, xp: first ? MOOD_XP : 0 });
+  S.moods.push({ at: Date.now(), day: t, v, s: 10, note });
+  logEvent({ t: "mood", v, s: 10, note, xp: first ? MOOD_XP : 0 });
   if (first) gain(MOOD_XP); else { const b = checkBadges(); save(); render(); toastQueue(b.map((x) => ["badge", `${x.icon} ${x.name}`, x.desc])); }
 }
 
@@ -421,21 +424,21 @@ function renderJourney(box) {
     days.forEach((d) => {
       const m = moods[d], col = el("div", "col");
       col.tabIndex = 0;
-      const tip = m ? `${full(d)}: ${MOODS[m.v - 1].label}${m.note ? " · " + m.note : ""}` : `${full(d)}: no check-in`;
+      const tip = m ? `${full(d)}: ${m.v}/10 · ${MOODS[m.v - 1].label}${m.note ? " · " + m.note : ""}` : `${full(d)}: no check-in`;
       col.title = tip; col.setAttribute("aria-label", tip); col.dataset.tip = tip;
-      const dot = el("i", "dot" + (m ? "" : " none")); if (m) dot.style.bottom = ((m.v - 1) / 4) * 100 + "%";
+      const dot = el("i", "dot" + (m ? "" : " none")); if (m) dot.style.bottom = ((m.v - 1) / 9) * 100 + "%";
       const lane = el("div", "lane"); lane.append(dot);
       col.append(lane, el("span", "x" + (d === t ? " now" : ""), lbl(d)));
       mc.append(col);
     });
-    const ax = el("div", "mood-axis"); ax.append(el("span", "", "😄"), el("span", "", "😐"), el("span", "", "😞"));
+    const ax = el("div", "mood-axis"); ax.append(el("span", "", "10"), el("span", "", "5"), el("span", "", "1"));
     const wrap = el("div", "mood-wrap"); wrap.append(ax, mc); box.append(wrap);
     // mood vs activity insight
     const withQ = [], without = [];
     Object.entries(moods).forEach(([d, m]) => ((st.countByDay[d] || 0) > 0 ? withQ : without).push(m.v));
     if (withQ.length >= 3 && without.length >= 3) {
       const avg = (a) => (a.reduce((x, y) => x + y, 0) / a.length).toFixed(1);
-      box.append(el("p", "insight", `Average mood on days you finished a quest: ${avg(withQ)} / 5. On days you didn't: ${avg(without)} / 5.`));
+      box.append(el("p", "insight", `Average mood on days you finished a quest: ${avg(withQ)} / 10. On days you didn't: ${avg(without)} / 10.`));
     }
   }
 
@@ -476,7 +479,7 @@ function renderJourney(box) {
     if (e.day !== lastDay) { lastDay = e.day; ul.append(el("li", "log-day", e.day === t ? "Today" : full(e.day))); }
     const time = new Date(e.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     const text = e.t === "quest" ? `✓ ${e.name}` : e.t === "freeze" ? "🧊 Broke the freeze" : e.t === "badge" ? `🏅 Badge: ${e.name}`
-      : e.t === "mood" ? `${MOODS[e.v - 1].e} Mood: ${MOODS[e.v - 1].label}${e.note ? " · " + e.note : ""}` : e.t;
+      : e.t === "mood" ? `◐ Mood ${e.v}/10 · ${MOODS[e.v - 1].label}${e.note ? " · " + e.note : ""}` : e.t;
     const li = el("li"); li.append(el("span", "lt", time), el("span", "lx", text)); if (e.xp) li.append(el("span", "xp", "+" + e.xp));
     ul.append(li);
   });

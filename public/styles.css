@@ -90,12 +90,11 @@ legend{font-size:.8rem;color:var(--muted);padding:0 6px}
 /* ---------- mood check-in ---------- */
 .mood-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px}
 .mood-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
-.mood-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.mood-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;cursor:pointer;min-width:0}
-.mood-btn .em{font-size:1.5rem;line-height:1}
-.mood-btn .lb{font-size:.72rem;color:var(--muted)}
-.mood-btn.on{border-color:var(--accent);background:var(--accent-soft)}
-.mood-btn.on .lb{color:var(--accent);font-weight:700}
+.mood-row{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.mood-btn{aspect-ratio:1/1.15;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid var(--line);background:color-mix(in srgb,var(--accent) calc(var(--lvl)*28%),var(--bg));color:var(--ink);font:inherit;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer;min-width:0;padding:0}
+.mood-btn.on{border:2px solid var(--accent);background:var(--accent);color:var(--bg)}
+.mood-ends{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:.72rem;color:var(--muted)}
+.mood-ends .now-label{color:var(--accent);font-weight:700;font-size:.8rem}
 .mood-care{margin:10px 0 0;font-size:.88rem;color:var(--ink);background:var(--accent-soft);border-radius:10px;padding:10px 12px}
 
 /* ---------- journey ---------- */

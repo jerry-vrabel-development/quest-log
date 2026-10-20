@@ -141,7 +141,13 @@ async function loadUser(env, userId) {
   const S = JSON.parse(row.state);
   S.quests = S.quests || []; S.log = S.log || []; S.moods = S.moods || []; S.days = S.days || []; S.badges = S.badges || {}; S.inv = S.inv || [];
   S.nextId = Math.max(S.nextId || 1, ...S.quests.map((q) => q.id + 1));
-  return { S, tz: row.tz || "America/Chicago" };
+  const tz = row.tz || "America/Chicago", t = todayIn(tz);
+  for (const q of S.quests) { // missed repeating quests roll forward, as in the app
+    if (q.done || !q.due || !q.repeat || q.repeat === "none" || q.due >= t) continue;
+    let d = q.due; while (d < t) d = advance(d, q.repeat);
+    q.due = d;
+  }
+  return { S, tz };
 }
 async function saveUser(env, userId, S, tz) {
   S.updatedAt = Date.now();

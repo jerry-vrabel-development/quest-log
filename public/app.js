@@ -309,7 +309,20 @@ function section(box, title, list, cls, emptyText) {
 }
 const byTime = (a, b) => (a.due + (a.time || "99")).localeCompare(b.due + (b.time || "99"));
 
+// Repeating quests that were missed roll forward to their next date on or after today,
+// so a few skipped days never turn into a wall of "overdue". Saved locally only (no
+// updatedAt bump), so it can't make this device look newer than the server.
+function rollMissed() {
+  const t = today(); let changed = false;
+  for (const q of S.quests) {
+    if (q.done || !q.due || !q.repeat || q.repeat === "none" || q.due >= t) continue;
+    let d = q.due; while (d < t) d = advance(d, q.repeat);
+    q.due = d; changed = true;
+  }
+  if (changed) saveLocal();
+}
 function render() {
+  rollMissed();
   const lv = level(S.xp);
   $("#lvl").textContent = "Level " + lv.l;
   $("#xp").textContent = `${S.xp} XP · ${lv.into}/${lv.need} to next`;
@@ -759,7 +772,7 @@ function updateSyncUI() {
   box.hidden = !onServer;
   const on = !!SYNC.code;
   $("#syncStatus").textContent = !on ? "Off. Turn on to sync devices and get push reminders when the app is closed."
-    : `On${syncState ? " · " + syncState : ""}. Push reminders: ${SYNC.push ? "on" : hasNotif && Notification.permission === "granted" ? "not set up" : "turn on reminders above"}.`;
+    : `On${syncState ? " · " + syncState : ""} · account ${SYNC.code.slice(0, 6)}. Push reminders: ${SYNC.push ? "on" : hasNotif && Notification.permission === "granted" ? "not set up" : "turn on reminders above"}.`;
   $("#syncOn").hidden = on; $("#syncLink").hidden = on;
   $("#syncShow").hidden = !on; $("#syncTest").hidden = !(on && SYNC.push); $("#syncOff").hidden = !on;
 }

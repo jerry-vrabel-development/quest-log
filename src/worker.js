@@ -187,22 +187,41 @@ export async function runReminders(env, now) {
 // Mirrors fireTime() in the app: no time set means 9:00 AM; remind < 0 means off.
 export function dueReminders(state, tz, now) {
   const out = [];
+  const today = localYmd(now, tz);
   for (const q of state.quests || []) {
     if (!q.due || q.done) continue;
     const remind = q.remind ?? 0;
     if (remind < 0) continue;
-    const [y, mo, d] = q.due.split("-").map(Number);
+    let due = q.due;
+    if (q.repeat && q.repeat !== "none") while (due < today) due = advanceYmd(due, q.repeat);
+    const [y, mo, d] = due.split("-").map(Number);
     const [h, mi] = (q.time || "09:00").split(":").map(Number);
     const dueAt = zonedTimeToUtc(y, mo, d, h, mi, tz);
     const at = dueAt - remind * 60_000;
     if (now < at || now > dueAt + REMINDER_GRACE_MS) continue;
     out.push({
-      key: `${q.id}@${q.due}`,
+      key: `${q.id}@${due}`,
       title: q.name,
       body: q.tiny ? "Tiny step: " + q.tiny : `+${q.xp} XP waiting`,
     });
   }
   return out;
+}
+
+function localYmd(ts, tz) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" })
+    .formatToParts(new Date(ts)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+export function advanceYmd(s, repeat) {
+  const [y, m, d] = s.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (repeat === "daily") dt.setUTCDate(dt.getUTCDate() + 1);
+  else if (repeat === "weekly") dt.setUTCDate(dt.getUTCDate() + 7);
+  else if (repeat === "monthly") dt.setUTCMonth(dt.getUTCMonth() + 1);
+  else if (repeat === "weekdays") { do dt.setUTCDate(dt.getUTCDate() + 1); while (dt.getUTCDay() === 0 || dt.getUTCDay() === 6); }
+  else dt.setUTCDate(dt.getUTCDate() + 1);
+  return dt.toISOString().slice(0, 10);
 }
 
 // Converts a wall-clock time in an IANA zone to a UTC timestamp (handles DST).

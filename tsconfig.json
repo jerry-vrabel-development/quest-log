@@ -1,16 +1,10 @@
 {
-  // Type-checks the browser code and shared core through JSDoc; there is no TypeScript build.
+  // The browser app (bundled by esbuild into public/js/app.js) and the shared core.
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "allowJs": true,
-    "checkJs": true,
-    "noEmit": true,
-    "strict": true,
-    "noImplicitAny": false,
-    "skipLibCheck": true
+    "types": []
   },
-  "include": ["public/js/**/*.js"]
+  "include": ["src/core", "src/client"],
+  "exclude": ["src/client/sw.ts"]
 }

@@ -5,3 +5,7 @@ coverage/
 dist/
 playwright-report/
 test-results/
+# built from src/client by `npm run build`
+public/js/
+public/sw.js
+public/sw.js.map

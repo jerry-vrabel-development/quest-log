@@ -847,3 +847,208 @@ legend {
   gap: 6px;
   flex: none;
 }
+
+/* ---------- celebrations ---------- */
+.confetti {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 60;
+}
+.chest-overlay {
+  --glow: var(--legend);
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, #000 62%, transparent);
+  animation: chest-fade 0.25s ease-out;
+}
+.chest-overlay[data-rarity="rare"] {
+  --glow: var(--rare);
+}
+.chest-overlay[data-rarity="epic"] {
+  --glow: var(--epic);
+}
+.chest-card {
+  width: min(380px, 100%);
+  background: var(--card);
+  border: 2px solid var(--glow);
+  border-radius: 20px;
+  padding: 18px 20px 20px;
+  text-align: center;
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--glow) 18%, transparent),
+    0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.chest-stage {
+  position: relative;
+  height: 150px;
+  display: grid;
+  place-items: center;
+}
+.chest-rays {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    color-mix(in srgb, var(--glow) 55%, transparent) 0 10deg,
+    transparent 10deg 30deg
+  );
+  mask: radial-gradient(circle, #000 25%, transparent 70%);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.4s,
+    transform 0.6s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.chest {
+  position: relative;
+  width: 112px;
+  height: 92px;
+  animation: chest-shake 0.65s ease-in-out;
+}
+.chest-body {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 58px;
+  border-radius: 6px 6px 10px 10px;
+  background:
+    linear-gradient(90deg, transparent 44%, #d9a93b 44% 56%, transparent 56%), linear-gradient(#8b5a2b, #6b4220);
+  border: 3px solid #d9a93b;
+}
+.chest-lid {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 38px;
+  border-radius: 40px 40px 4px 4px;
+  background:
+    linear-gradient(90deg, transparent 44%, #d9a93b 44% 56%, transparent 56%), linear-gradient(#9c6a35, #7a4c25);
+  border: 3px solid #d9a93b;
+  transform-origin: 50% 100%;
+  transition: transform 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.chest-lock {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 18px;
+  height: 20px;
+  margin-left: -9px;
+  border-radius: 4px;
+  background: #f1cf6b;
+  border: 2px solid #a87b1f;
+}
+.chest-overlay.opened .chest-lid {
+  transform: translateY(-26px) rotate(-24deg);
+}
+.chest-overlay.opened .chest-rays {
+  opacity: 1;
+  transform: scale(1);
+  animation: chest-spin 9s linear infinite;
+}
+.chest-kicker {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--glow);
+}
+.chest-title {
+  margin: 4px 0 10px;
+  font-size: 1.5rem;
+}
+.chest-loot,
+.chest-more,
+.chest-collect {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.35s 0.2s,
+    transform 0.35s 0.2s;
+}
+.chest-overlay.opened :is(.chest-loot, .chest-more, .chest-collect) {
+  opacity: 1;
+  transform: none;
+}
+.chest-loot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--glow) 12%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--glow) 45%, transparent);
+}
+.chest-rar {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--glow);
+}
+.chest-desc {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.chest-more {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.chest-more li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 0.85rem;
+}
+.chest-collect {
+  margin-top: 14px;
+  width: 100%;
+}
+@keyframes chest-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes chest-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: rotate(-6deg) translateY(-2px);
+  }
+  40% {
+    transform: rotate(6deg) translateY(-4px);
+  }
+  60% {
+    transform: rotate(-4deg) translateY(-2px);
+  }
+  80% {
+    transform: rotate(3deg) scale(1.05);
+  }
+}
+@keyframes chest-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chest,
+  .chest-overlay,
+  .chest-overlay.opened .chest-rays {
+    animation: none;
+  }
+}

@@ -1,61 +1,100 @@
 /**
- * What happens when the user does something rewarding. The core rules change the state;
- * this module rolls loot, checks badges, saves, re-renders and queues the toasts.
+ * What happens when the user does something rewarding, in Karen Pryor's order:
+ *   1. mark the behavior the instant it happens (a click and a tiny buzz),
+ *   2. let the core rules change the state and decide how big the moment is,
+ *   3. pay out: loot, badges, and a celebration sized to the moment.
  */
-import { completeQuest, level, recordFreeze, recordMood, rollLoot, uncompleteQuest } from "../core/rules";
+import { celebrationFor, guaranteedDrop, isLowDay, type Moment } from "../core/celebrate";
+import { completeQuest, level, recordFreeze, recordMood, rollLoot, streak, uncompleteQuest } from "../core/rules";
 import { checkBadges, type EarnedBadge } from "../core/stats";
 import type { Quest } from "../core/types";
+import { celebrate } from "./celebration";
 import { render } from "./render";
-import { S, save, when } from "./store";
-import { toastQueue, type ToastItem } from "./toast";
+import { buzz, playMarker } from "./sound";
+import { S, save, today, when } from "./store";
+import type { ToastItem } from "./toast";
 
 const badgeToast = (b: EarnedBadge): ToastItem => ["badge", `${b.icon} ${b.name}`, b.desc];
 
-/**
- * Rolls loot for XP just earned, checks badges, saves and celebrates.
- * @param xp XP earned by the action (0 for a repeat mood check-in)
- * @param levelBefore level before the action
- */
-function reward(xp: number, levelBefore: number): void {
-  const item = xp > 0 ? rollLoot(S) : null;
+/** Step 1: the marker. Runs before any work, so it lands within milliseconds of the tap. */
+function mark(): void {
+  playMarker();
+  buzz("marker");
+}
+
+interface Before {
+  level: number;
+  streak: number;
+}
+const snapshot = (): Before => ({ level: level(S.xp).l, streak: streak(S.days, today()) });
+const questsToday = () => S.log.filter((e) => e.t === "quest" && e.day === today()).length;
+
+/** Steps 2 and 3: roll loot, check badges, save, render, and celebrate. */
+function reward(
+  before: Before,
+  { kind, xp, questXp, repeatCount = 0 }: { kind: Moment["kind"]; xp: number; questXp?: number; repeatCount?: number },
+): void {
+  const t = today();
+  const lowDay = isLowDay(S.moods, t);
+  const item = xp > 0 ? rollLoot(S, Math.random, Date.now(), guaranteedDrop({ repeatCount, lowDay })) : null;
   const badges = checkBadges(S, when());
   save();
   render();
-  const toasts: ToastItem[] = [];
+
   const levelAfter = level(S.xp).l;
-  if (levelAfter > levelBefore) toasts.push(["level up", `Level ${levelAfter}!`, "You're moving. Keep it gentle."]);
+  const celebration = celebrationFor({
+    kind,
+    xp,
+    questXp,
+    item,
+    badges: badges.map((b) => `${b.icon} ${b.name}`),
+    levelBefore: before.level,
+    levelAfter,
+    streakBefore: before.streak,
+    streakAfter: streak(S.days, t),
+    questsToday: questsToday(),
+    lowDay,
+  });
+
+  const toasts: ToastItem[] = [];
+  if (levelAfter > before.level) toasts.push(["level up", `Level ${levelAfter}!`, "You're moving. Keep it gentle."]);
   if (item) toasts.push([item.rar, item.n, item.d]);
   toasts.push(...badges.map(badgeToast));
   if (!toasts.length && xp > 0) toasts.push([`+${xp} xp`, "Nice.", "No drop this time. The next one might be big."]);
-  toastQueue(toasts);
+  celebrate({ celebration, item, toasts });
 }
 
 export function setQuestDone(q: Quest, checked: boolean): void {
-  const before = level(S.xp).l;
-  if (checked) {
-    reward(completeQuest(S, q, when()).xp, before);
-  } else {
+  if (!checked) {
     uncompleteQuest(S, q);
     save();
     render();
+    return;
   }
+  mark();
+  const before = snapshot();
+  const { xp } = completeQuest(S, q, when());
+  reward(before, { kind: "quest", xp, questXp: q.xp, repeatCount: q.repeat !== "none" ? q.count : 0 });
 }
 
 export function breakFreeze(): void {
-  const before = level(S.xp).l;
-  reward(recordFreeze(S, when()).xp, before);
+  mark();
+  const before = snapshot();
+  reward(before, { kind: "freeze", xp: recordFreeze(S, when()).xp });
 }
 
 export function logMood(v: number): void {
+  mark();
   const note = (prompt("Anything you want to remember about today? (optional)") || "").trim().slice(0, 280);
-  const before = level(S.xp).l;
-  reward(recordMood(S, v, note, when()).xp, before);
+  const before = snapshot();
+  reward(before, { kind: "mood", xp: recordMood(S, v, note, when()).xp });
 }
 
 /** Quests completed through the Claude connector already have their XP; roll their loot here. */
 export function processRewards(): void {
   if (!S.rewards?.length) return;
   const items = S.rewards.splice(0);
+  const lowDay = isLowDay(S.moods, today());
   const toasts: ToastItem[] = [
     [
       "claude",
@@ -63,12 +102,27 @@ export function processRewards(): void {
       items.map((r) => r.name).join(" · "),
     ],
   ];
-  for (let i = 0; i < items.length; i++) {
-    const it = rollLoot(S);
-    if (it) toasts.push([it.rar, it.n, it.d]);
-  }
-  toasts.push(...checkBadges(S, when()).map(badgeToast));
+  const drops = items.map(() => rollLoot(S, Math.random, Date.now(), lowDay)).filter((it) => it !== null);
+  for (const it of drops) toasts.push([it.rar, it.n, it.d]);
+  const badges = checkBadges(S, when());
+  toasts.push(...badges.map(badgeToast));
   save();
   render();
-  toastQueue(toasts);
+
+  // Celebrate the best moment in the batch, judged by the same rules as a single quest.
+  const best = drops.find((d) => d.rar === "legendary") ?? drops.find((d) => d.rar === "epic") ?? drops.at(0) ?? null;
+  const lvl = level(S.xp).l;
+  const celebration = celebrationFor({
+    kind: "freeze", // not a quest done in the app, so no big-day or hard-day bonuses here
+    xp: items.reduce((sum, r) => sum + r.xp, 0),
+    item: best,
+    badges: badges.map((b) => `${b.icon} ${b.name}`),
+    levelBefore: lvl,
+    levelAfter: lvl,
+    streakBefore: 0,
+    streakAfter: 0,
+    questsToday: 0,
+    lowDay,
+  });
+  celebrate({ celebration, item: best, toasts });
 }

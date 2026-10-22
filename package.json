@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "build": "node scripts/build.mjs",
+    "build:watch": "node scripts/build.mjs --watch",
     "deploy": "wrangler deploy",
+    "types": "wrangler types --env-interface Env --strict-vars=false",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -12,7 +15,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc -p .",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.sw.json && tsc -p tsconfig.worker.json",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
     "serve:static": "node scripts/serve-static.mjs",
     "vapid": "node scripts/gen-vapid.mjs",
@@ -20,14 +23,18 @@
     "db:init:local": "wrangler d1 execute quest-log --local --file=schema.sql"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261022.1",
     "@eslint/js": "^9.39.5",
-    "@playwright/test": "^1.56.1",
-    "@vitest/coverage-v8": "^3.2.7",
+    "@playwright/test": "1.56.1",
+    "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "^4.1.12",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "globals": "^17.13.0",
     "prettier": "^3.9.10",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.7",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^4.1.12",
     "wrangler": "^4"
   },
   "dependencies": {

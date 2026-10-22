@@ -1,0 +1,10 @@
+{
+  // The Cloudflare Worker, plus tests and tooling that run in Node.
+  // Runtime and binding types come from worker-configuration.d.ts (`npm run types`).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["worker-configuration.d.ts", "src/core", "src/worker", "test", "e2e", "scripts", "*.config.ts"]
+}

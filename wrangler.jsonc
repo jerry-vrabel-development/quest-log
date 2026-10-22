@@ -1,10 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "quest-log",
-  "main": "src/worker.js",
+  "main": "src/worker/worker.ts",
   "compatibility_date": "2026-10-01",
-  // The PWA files are served as static assets; /api/* goes to the Worker.
+  // lets the OAuth provider fetch Client ID Metadata Documents safely
   "compatibility_flags": ["global_fetch_strictly_public"],
+  // Bundles the browser app (src/client) into public/ before every deploy and dev run.
+  "build": { "command": "npm run build", "watch_dir": "src/client" },
+  // The PWA is served as static assets; API, MCP and OAuth routes go to the Worker first.
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

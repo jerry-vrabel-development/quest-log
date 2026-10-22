@@ -1,13 +1,10 @@
 // /authorize: the consent page. The user proves who they are with their Quest Log sync code
 // (the same secret that links devices), then approves Claude's access.
 import { AuthorizationError, CimdFetchError } from "@cloudflare/workers-oauth-provider";
+import { userExists } from "./db.js";
+import { html, userIdForCode } from "./http.js";
 
 const esc = (v) => String(v).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
-async function hashCode(code) {
-  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code));
-  return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 export async function handleAuthorize(req, env) {
   const oauth = env.OAUTH_PROVIDER;
@@ -28,11 +25,15 @@ export async function handleAuthorize(req, env) {
         return new Response(null, { status: 302, headers: denied.headers });
       }
       const code = String(form.get("code") || "").trim();
-      const userId = /^[A-Za-z0-9_-]{32,128}$/.test(code) ? await hashCode(code) : null;
-      const exists = userId && (await env.DB.prepare("SELECT 1 FROM users WHERE id = ?").bind(userId).first());
-      if (!exists) {
+      const userId = await userIdForCode(code);
+      if (!userId || !(await userExists(env.DB, userId))) {
         // The handle is single-use, so send the user back through the flow from the client.
-        return html(errorPage("That sync code didn't match a Quest Log account. In the app, go to Settings → Show sync code, then start connecting again from Claude."), 400);
+        return html(
+          errorPage(
+            "That sync code didn't match a Quest Log account. In the app, go to Settings → Show sync code, then start connecting again from Claude.",
+          ),
+          400,
+        );
       }
       const approved = await oauth.approveConsent(req, handle, { scope: form.getAll("scope").map(String) });
       const { redirectTo } = await oauth.completeAuthorization({
@@ -55,8 +56,6 @@ export async function handleAuthorize(req, env) {
     throw error;
   }
 }
-
-const html = (body, status = 200) => new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8", "X-Frame-Options": "DENY" } });
 
 const STYLE = `<style>
 :root{--bg:#f6f4ef;--card:#fff;--ink:#1d1b18;--muted:#6b665d;--line:#e4dfd4;--accent:#2f6f5e;--warn:#b4472f}

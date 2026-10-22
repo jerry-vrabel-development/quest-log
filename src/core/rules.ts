@@ -108,10 +108,19 @@ export function markActiveDay(S: State, today: string): void {
 }
 
 /** Variable-ratio loot roll with a pity timer. Mutates S.inv and S.dry. */
-export function rollLoot(S: State, rng: Rng = Math.random, now: number = Date.now()): LootItem | null {
+/**
+ * @param guaranteed continuous reinforcement: always drop something (at least common), e.g. while a
+ *   new habit forms or on a low-mood day. Rarer drops are still possible.
+ */
+export function rollLoot(
+  S: State,
+  rng: Rng = Math.random,
+  now: number = Date.now(),
+  guaranteed = false,
+): LootItem | null {
   const r = rng();
   let rar: Rarity | null = DROP_TABLE.find(([p]) => r < p)?.[1] ?? null;
-  if (!rar && S.dry >= PITY_AFTER) rar = "common";
+  if (!rar && (guaranteed || S.dry >= PITY_AFTER)) rar = "common";
   if (!rar) {
     S.dry++;
     return null;

@@ -6,5 +6,5 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["worker-configuration.d.ts", "src/core", "src/worker", "test", "e2e", "scripts", "*.config.ts"]
+  "include": ["worker-configuration.d.ts", "src/core", "src/worker", "test", "scripts", "vitest.config.ts"]
 }

@@ -21,8 +21,8 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        // three programs: browser (DOM), service worker (WebWorker), Worker + tests (workerd + Node)
-        project: ["./tsconfig.json", "./tsconfig.sw.json", "./tsconfig.worker.json"],
+        // four programs: browser (DOM), service worker (WebWorker), Worker + tests (workerd + Node), e2e (Node + DOM)
+        project: ["./tsconfig.json", "./tsconfig.sw.json", "./tsconfig.worker.json", "./tsconfig.e2e.json"],
         tsconfigRootDir: import.meta.dirname,
       },
     },

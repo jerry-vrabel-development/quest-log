@@ -3,12 +3,14 @@
  * Entry point: wires up the UI modules and starts the app. Works offline from localStorage;
  * sync and push are optional extras when served by the Worker.
  */
-import { breakFreeze, processRewards } from "./actions";
+import { processRewards } from "./actions";
+import { initDice, openDice } from "./dice";
 import { $ } from "./dom";
 import { initEditor, openEditor } from "./editor";
 import { initChartTooltips } from "./journey";
 import { checkReminders, initReminders } from "./reminders";
 import { isView, render, setView } from "./render";
+import { initSessionSounds } from "./session";
 import { applyTheme, initSettings } from "./settings";
 import { load, today } from "./store";
 import { initSync, pullState } from "./sync";
@@ -21,6 +23,8 @@ initReminders();
 initSettings();
 initSync();
 initChartTooltips();
+initDice();
+initSessionSounds();
 
 for (const btn of document.querySelectorAll<HTMLElement>(".tabs button")) {
   btn.onclick = () => {
@@ -28,7 +32,7 @@ for (const btn of document.querySelectorAll<HTMLElement>(".tabs button")) {
   };
 }
 $("#addBtn").onclick = () => openEditor(null);
-$("#freeze").onclick = breakFreeze;
+$("#freeze").onclick = openDice;
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) return;
   render();

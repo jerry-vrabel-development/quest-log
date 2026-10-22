@@ -15,6 +15,8 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     // Deterministic loot: 0.5 always rolls a common drop, so jackpots come only from the rules under test.
     Math.random = () => 0.5;
+    // Most tests skip the opening screen; the splash tests turn it back on.
+    if (localStorage.getItem("quest-log-splash") === null) localStorage.setItem("quest-log-splash", "0");
     window.__sounds = [];
     const Real = window.AudioContext;
     window.AudioContext = class extends Real {
@@ -62,6 +64,8 @@ test("the first quest ever is a jackpot: the chest opens for the First Step badg
 });
 
 test("the marker click plays first, then the reward", async ({ page }) => {
+  await page.locator("#lvl").click(); // the first tap of a session plays the welcome chime
+  await page.evaluate(() => (window.__sounds = []));
   await page.getByLabel("Complete Check off this quest").click();
   await expect(page.getByRole("dialog")).toBeVisible();
   const sounds = await page.evaluate(() => window.__sounds);
@@ -148,10 +152,72 @@ test("Journey shows stats, an earned badge and the activity log", async ({ page 
   await expect(page.locator(".log")).toContainText("✓ Check off this quest");
 });
 
-test("the Frozen? button gives XP and logs a thaw", async ({ page }) => {
+test("Frozen? rolls one tiny step; doing it gives XP and logs what broke the freeze", async ({ page }) => {
   await page.locator("#freeze").click();
+  const dice = page.locator("#dice");
+  await expect(dice).toBeVisible();
+  await expect(dice.getByRole("button", { name: "Do it (2 min)" })).toBeVisible();
+  const step = (await dice.locator("#diceStep").textContent()) ?? "";
+  expect(step.length).toBeGreaterThan(0);
+  await expect(dice.locator("#diceFrom")).toContainText("From: ");
+
+  await dice.getByRole("button", { name: "Do it (2 min)" }).click();
+  await expect(dice.locator("#diceTimer")).toHaveText("2:00");
+  await dice.getByRole("button", { name: "Done ✓" }).click();
+  await expect(dice).toBeHidden();
   await collect(page); // Thaw badge
   await expect(page.locator("#xp")).toHaveText("5 XP · 5/50 to next");
   await page.getByRole("tab", { name: "Journey" }).click();
-  await expect(page.locator(".log")).toContainText("Broke the freeze");
+  await expect(page.locator(".log")).toContainText(`Broke the freeze: ${step}`);
+});
+
+test("rolling clacks on each bounce, then lands", async ({ page }) => {
+  await page.locator("#lvl").click(); // the welcome chime
+  await page.evaluate(() => (window.__sounds = []));
+  await page.locator("#freeze").click();
+  await expect(page.getByRole("button", { name: "Do it (2 min)" })).toBeVisible();
+  const sounds = await page.evaluate(() => window.__sounds);
+  expect(sounds.filter((s) => s === "marker").length).toBe(4); // four bounces
+});
+
+test("Roll again lands on a different tiny step", async ({ page }) => {
+  await page.locator("#freeze").click();
+  const dice = page.locator("#dice");
+  await expect(dice.getByRole("button", { name: "Do it (2 min)" })).toBeVisible();
+  const first = await dice.locator("#diceStep").textContent();
+  await dice.getByRole("button", { name: "Roll again" }).click();
+  await expect(dice.getByRole("button", { name: "Do it (2 min)" })).toBeVisible();
+  await expect(dice.locator("#diceStep")).not.toHaveText(first ?? "");
+});
+
+test("closing the dice gives nothing and logs nothing", async ({ page }) => {
+  await page.locator("#freeze").click();
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page.locator("#dice")).toBeHidden();
+  await expect(page.locator("#xp")).toHaveText("0 XP · 0/50 to next");
+});
+
+test.describe("opening screen", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("quest-log-splash", "1"));
+    await page.reload();
+  });
+
+  test("shows level and streak, then 'Tap to begin' plays the welcome chime and clears it", async ({ page }) => {
+    const splash = page.locator("#splash");
+    await expect(splash).toBeVisible();
+    await expect(splash).toContainText("Level 1");
+    await page.evaluate(() => (window.__sounds = []));
+    await splash.click();
+    await expect(splash).toBeHidden();
+    expect((await page.evaluate(() => window.__sounds)).length).toBeGreaterThan(0);
+  });
+
+  test("can be turned off in Settings", async ({ page }) => {
+    await page.locator("#splash").click();
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.locator("#splashSel").selectOption("0");
+    await page.reload();
+    await expect(page.locator("#splash")).toBeHidden();
+  });
 });

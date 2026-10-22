@@ -50,7 +50,7 @@ export interface Mood {
 export type LogEvent =
   | { t: "quest"; at: number; day: string; id: number; name: string; g: string; xp: number; via?: string }
   | { t: "mood"; at: number; day: string; v: number; s: number; note: string; xp: number; via?: string }
-  | { t: "freeze"; at: number; day: string; xp: number }
+  | { t: "freeze"; at: number; day: string; xp: number; step?: string }
   | { t: "badge"; at: number; day: string; name: string; xp?: undefined };
 
 /** XP earned outside the app (via Claude); the app rolls loot for it on next open. */

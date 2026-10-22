@@ -22,6 +22,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="splash" id="splash" role="button" tabindex="0" aria-label="Tap to begin">
+      <img class="splash-emblem" src="icons/icon-192.png" alt="" width="96" height="96" />
+      <h1 class="splash-title">Quest Log</h1>
+      <p class="splash-stats" id="splashStats"></p>
+      <p class="splash-cta">Tap to begin</p>
+    </div>
     <div class="wrap">
       <header class="top">
         <div>
@@ -35,7 +41,7 @@
         <div class="hud-row"><span class="lvl" id="lvl">Level 1</span><span class="mono" id="xp">0 XP</span></div>
         <div class="bar"><i id="bar"></i></div>
         <div class="hud-row stats"><span id="streak"></span><span id="today-count"></span></div>
-        <button class="freeze" id="freeze">Frozen? Do the smallest possible step for 2 minutes (+5 XP)</button>
+        <button class="freeze" id="freeze">🎲 Frozen? Roll for one tiny step, 2 minutes (+5 XP)</button>
       </div>
 
       <div id="notifBanner" class="banner" hidden>
@@ -126,6 +132,27 @@
       </form>
     </dialog>
 
+    <!-- Frozen? dice -->
+    <dialog id="dice" aria-labelledby="diceTitle">
+      <h2 id="diceTitle">Frozen? Roll for it.</h2>
+      <p class="hint">One tiny step. Two minutes. That's the whole job.</p>
+      <div class="dice-table" aria-hidden="true">
+        <div class="dice-toss" id="diceToss">
+          <div class="dice-cube" id="diceCube"></div>
+        </div>
+        <div class="dice-shadow"></div>
+      </div>
+      <p class="dice-step" id="diceStep" aria-live="polite"></p>
+      <p class="dice-from" id="diceFrom"></p>
+      <p class="dice-timer mono" id="diceTimer" hidden></p>
+      <div class="dice-actions">
+        <button type="button" class="btn ghost" id="diceRoll">Roll again</button>
+        <button type="button" class="btn" id="diceGo" hidden>Do it (2 min)</button>
+        <button type="button" class="btn" id="diceDone" hidden>Done ✓</button>
+      </div>
+      <form method="dialog"><button class="dice-close" aria-label="Close">×</button></form>
+    </dialog>
+
     <!-- Settings -->
     <dialog id="settings">
       <form method="dialog">
@@ -180,6 +207,16 @@
             <p class="hint">A click the moment you finish something, then the reward. Big wins open a loot chest.</p>
           </div>
           <select id="soundSel">
+            <option value="1">On</option>
+            <option value="0">Off</option>
+          </select>
+        </div>
+        <div class="set-row">
+          <div>
+            <b>Opening animation</b>
+            <p class="hint">A welcome screen and chime when you open the app.</p>
+          </div>
+          <select id="splashSel">
             <option value="1">On</option>
             <option value="0">Off</option>
           </select>

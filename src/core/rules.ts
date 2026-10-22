@@ -199,8 +199,8 @@ export function recordMood(
 }
 
 /** The "Frozen?" button: two minutes of the smallest step is worth a little XP. */
-export function recordFreeze(S: State, when: When): { xp: number } {
-  logEvent(S, { t: "freeze", xp: FREEZE_XP }, when);
+export function recordFreeze(S: State, when: When, step?: string): { xp: number } {
+  logEvent(S, { t: "freeze", xp: FREEZE_XP, ...(step ? { step } : {}) }, when);
   addXp(S, FREEZE_XP, when.today);
   return { xp: FREEZE_XP };
 }

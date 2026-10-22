@@ -5,6 +5,7 @@ import { $, download } from "./dom";
 import { updateNotifUI } from "./reminders";
 import { render } from "./render";
 import { S, reset, save, setState, today } from "./store";
+import { setSplashOn, splashOn } from "./session";
 import { setSoundOn, soundOn } from "./sound";
 import { pushState } from "./sync";
 import { toast } from "./toast";
@@ -50,6 +51,11 @@ export function initSettings(): void {
   soundSel.value = soundOn() ? "1" : "0";
   soundSel.onchange = () => {
     setSoundOn(soundSel.value === "1");
+  };
+  const splashSel = $<HTMLSelectElement>("#splashSel");
+  splashSel.value = splashOn() ? "1" : "0";
+  splashSel.onchange = () => {
+    setSplashOn(splashSel.value === "1");
   };
   $("#themeSel").onchange = (e) => {
     const v = (e.target as HTMLSelectElement).value as State["theme"];

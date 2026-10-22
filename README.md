@@ -42,6 +42,10 @@ flowchart LR
 
 **Rewards follow Karen Pryor's training principles** (`src/core/celebrate.ts`). A marker click and a tiny buzz land the instant a quest is checked, before any work happens, and the payoff follows about 150 ms later, so the click itself becomes rewarding. New habits get continuous reinforcement: a repeating quest's first 5 completions always drop loot, then it moves to the variable schedule. Hard days pay more: when the latest mood is 4 or under, every quest drops loot, and the first one is a jackpot. Jackpots stay rare and are saved for breakthroughs (level-ups, badges, epic loot, 30+ XP quests, every 5th quest in a day, streak milestones). They open a full-screen loot chest with a drum roll, fanfare and confetti. Sounds are synthesized with Web Audio, can be turned off in Settings, and animations respect `prefers-reduced-motion`.
 
+**Frozen? Roll the dice** (`src/core/dice.ts`, `src/client/dice.ts`). When you can't start anything, the Frozen button tosses a 3D die (pure CSS) that clacks as it bounces and lands on one tiny step from a quest that's due, or on a built-in step like "Drink a glass of water" when none are. You can roll again, or tap "Do it" to start a two-minute timer. Finishing pays 5 XP, and the Journey log records which tiny step broke the freeze. That's shaping: the smallest possible step gets rewarded.
+
+**Opening and closing the app are rewarded too** (`src/client/session.ts`). A short opening screen shows your level and streak; tapping it plays a rising welcome chime. Browsers only allow sound after a tap, which is why the screen asks for one. Leaving the app plays a soft farewell (best effort, since mobile browsers may cut it off). Coming back after 30 minutes away shows the opening screen again. It can be turned off in Settings.
+
 **Rewards stay where the user sees them.** When Claude completes a quest, the server adds the XP right away and queues a pending reward. The loot roll and badge check happen the next time the app opens, so the reward moment still happens in the app.
 
 ## Project layout
@@ -80,13 +84,13 @@ There are four TypeScript programs, because the code runs in different global sc
 
 ## Testing and quality
 
-| Command                                                       | What it does                                                                                                                                                                                     |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm test`                                                    | 140 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter                                      |
-| `npm run test:e2e`                                            | Playwright on Desktop Chrome and Pixel 7: first run, completing quests, the jackpot chest, marker-before-reward sound order, sound settings, reduced motion, mood check-ins, the editor, Journey |
-| `npm run test:coverage`                                       | about 94% line coverage of `core/` and `src/`                                                                                                                                                    |
-| `npm run lint` · `npm run format:check` · `npm run typecheck` | Type-aware ESLint (`strictTypeChecked`), Prettier, and `tsc` over all three programs                                                                                                             |
-| `npm run check`                                               | all of the above except e2e                                                                                                                                                                      |
+| Command                                                       | What it does                                                                                                                                                                                                                          |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`                                                    | 140 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter                                                                           |
+| `npm run test:e2e`                                            | Playwright on Desktop Chrome and Pixel 7: first run, completing quests, the jackpot chest, marker-before-reward sound order, sound settings, reduced motion, mood check-ins, the editor, Journey, the Frozen dice, the opening screen |
+| `npm run test:coverage`                                       | about 94% line coverage of `core/` and `src/`                                                                                                                                                                                         |
+| `npm run lint` · `npm run format:check` · `npm run typecheck` | Type-aware ESLint (`strictTypeChecked`), Prettier, and `tsc` over all three programs                                                                                                                                                  |
+| `npm run check`                                               | all of the above except e2e                                                                                                                                                                                                           |
 
 Highlights:
 

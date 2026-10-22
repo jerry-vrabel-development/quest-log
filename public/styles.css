@@ -1052,3 +1052,284 @@ legend {
     animation: none;
   }
 }
+
+/* ---------- frozen? dice ---------- */
+#dice {
+  --die: 84px;
+  position: relative;
+  width: min(420px, calc(100% - 32px));
+  padding: 20px;
+}
+#dice form {
+  padding: 0;
+}
+#dice .hint {
+  margin: 0;
+}
+#dice h2 {
+  margin-right: 28px;
+}
+.dice-table {
+  position: relative;
+  height: 150px;
+  margin: 10px 0 4px;
+  border-radius: 16px;
+  background: radial-gradient(ellipse at 50% 85%, var(--accent-soft), transparent 70%);
+  perspective: 700px;
+  overflow: hidden;
+}
+.dice-toss {
+  position: absolute;
+  left: calc(50% - var(--die) / 2);
+  top: 28px;
+  width: var(--die);
+  height: var(--die);
+  transform-style: preserve-3d;
+}
+.dice-toss.tossing {
+  animation: dice-toss 1300ms linear both;
+}
+/* Thrown in from the left, three bounces that shrink, then settles in the middle. */
+@keyframes dice-toss {
+  0% {
+    transform: translate(-140px, -90px);
+    animation-timing-function: ease-in;
+  }
+  38% {
+    transform: translate(-40px, 0);
+    animation-timing-function: ease-out;
+  }
+  50% {
+    transform: translate(-14px, -42px);
+    animation-timing-function: ease-in;
+  }
+  62% {
+    transform: translate(6px, 0);
+    animation-timing-function: ease-out;
+  }
+  71% {
+    transform: translate(10px, -16px);
+    animation-timing-function: ease-in;
+  }
+  80% {
+    transform: translate(6px, 0);
+    animation-timing-function: ease-out;
+  }
+  86% {
+    transform: translate(3px, -5px);
+    animation-timing-function: ease-in;
+  }
+  92%,
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.dice-cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+/* A slight resting tilt so the die reads as 3D, not a flat square. */
+.dice-table .dice-cube {
+  rotate: 1 -1 0 -14deg;
+}
+.die-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  padding: 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fffdf6, #efe8d6);
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.08),
+    inset -4px -6px 10px rgba(0, 0, 0, 0.08);
+  backface-visibility: hidden;
+}
+.die-face i {
+  place-self: center;
+  width: 14px;
+  height: 14px;
+}
+.die-face i.pip {
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3f8f78, var(--accent) 60%, #1e4a3e);
+  box-shadow: inset 0 2px 2px rgba(0, 0, 0, 0.35);
+}
+.die-face.f1 {
+  transform: translateZ(calc(var(--die) / 2));
+}
+.die-face.f1 i.pip {
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle at 35% 35%, #ff8a73, #d9452b 60%, #8f2414);
+}
+.die-face.f6 {
+  transform: rotateY(180deg) translateZ(calc(var(--die) / 2));
+}
+.die-face.f2 {
+  transform: rotateY(90deg) translateZ(calc(var(--die) / 2));
+}
+.die-face.f5 {
+  transform: rotateY(-90deg) translateZ(calc(var(--die) / 2));
+}
+.die-face.f3 {
+  transform: rotateX(90deg) translateZ(calc(var(--die) / 2));
+}
+.die-face.f4 {
+  transform: rotateX(-90deg) translateZ(calc(var(--die) / 2));
+}
+.dice-shadow {
+  position: absolute;
+  left: calc(50% - 44px);
+  bottom: 12px;
+  width: 88px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22);
+  filter: blur(5px);
+}
+.dice-step {
+  min-height: 2.6em;
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+#dice[data-stage="landed"] .dice-step,
+#dice[data-stage="doing"] .dice-step {
+  animation: dice-reveal 320ms ease-out;
+}
+@keyframes dice-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+}
+.dice-from {
+  min-height: 1.2em;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+.dice-timer {
+  text-align: center;
+  font-size: 1.6rem;
+  margin: 8px 0 0;
+  color: var(--accent);
+}
+.dice-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.dice-actions .btn {
+  flex: 1;
+}
+.dice-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dice-toss.tossing,
+  #dice .dice-step {
+    animation: none;
+  }
+}
+
+/* ---------- opening animation ---------- */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--xp) 22%, transparent), transparent 60%), var(--bg);
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease;
+}
+.splash[hidden] {
+  display: none !important;
+}
+.splash.leaving {
+  opacity: 0;
+  transform: scale(1.06);
+}
+.splash:focus-visible {
+  outline: none;
+}
+.splash-emblem {
+  border-radius: 24px;
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--xp) 45%, transparent);
+  animation: splash-rise 0.8s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.splash-title {
+  margin: 14px 0 0;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+  animation: splash-fade 0.6s 0.25s both;
+}
+.splash-stats {
+  margin: 0;
+  color: var(--muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.9rem;
+  animation: splash-fade 0.6s 0.45s both;
+}
+.splash-cta {
+  margin: 28px 0 0;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+  animation:
+    splash-fade 0.6s 0.7s both,
+    splash-pulse 2s 1.4s ease-in-out infinite;
+}
+@keyframes splash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.6) rotate(-8deg);
+  }
+}
+@keyframes splash-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes splash-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-emblem,
+  .splash-title,
+  .splash-stats,
+  .splash-cta {
+    animation: none;
+  }
+}

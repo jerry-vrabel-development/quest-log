@@ -4,7 +4,7 @@
 
 A gamified, ADHD-friendly task tracker. Each quest has a **tiny first step** for when you feel frozen. Completing quests rolls **variable-ratio loot**, with a pity timer so a dry streak never lasts long. The app also has gentle streaks, a 1–10 mood check-in, badges, and a Journey tab that shows how mood and activity relate.
 
-It is an installable PWA that works offline. A Cloudflare Worker adds device sync, push reminders that arrive while the app is closed, and a **Claude connector**: a remote MCP server behind OAuth 2.1, so an AI assistant can add, schedule and complete quests from a conversation.
+Written in **TypeScript** (strict). It is an installable PWA that works offline. A Cloudflare Worker adds device sync, push reminders that arrive while the app is closed, and a **Claude connector**: a remote MCP server behind OAuth 2.1, so an AI assistant can add, schedule and complete quests from a conversation.
 
 **Live:** https://quest-log.forwardslash.workers.dev
 
@@ -12,18 +12,18 @@ It is an installable PWA that works offline. A Cloudflare Worker adds device syn
 
 ```mermaid
 flowchart LR
-  subgraph Browser["PWA (public/)"]
+  subgraph Browser["PWA (src/client → public/)"]
     UI["UI modules<br/>render · journey · editor"] --> Core
     SW["Service worker<br/>offline shell · push"]
   end
-  subgraph Worker["Cloudflare Worker (src/)"]
+  subgraph Worker["Cloudflare Worker (src/worker)"]
     OAuth["OAuth 2.1 provider"] --> MCP["MCP server<br/>/mcp"]
     API["REST API<br/>/api/*"]
     Cron["Cron, every 5 min"] --> Push["Web Push<br/>VAPID"]
     MCP --> Core2["shared core"]
     Cron --> Core2
   end
-  Core["shared core<br/>public/js/core"] -. same files .- Core2
+  Core["shared core<br/>src/core"] -. same code .- Core2
   UI <-->|sync| API
   API --> D1[(D1)]
   MCP --> D1
@@ -34,7 +34,9 @@ flowchart LR
   Claude["Claude"] -->|OAuth + JSON-RPC| OAuth
 ```
 
-**One rulebook, three callers.** The game rules live in `public/js/core/`: dates and repeats, XP curve, loot table, streaks, badges and reminder timing. They are plain, dependency-free ES modules. The browser loads them directly with no build step. The Worker imports the same files, so Wrangler bundles them into the server. A quest completed through Claude, a reminder sent by the cron, and a checkbox ticked in the app all go through the same code.
+**One rulebook, three callers.** The game rules live in `src/core/`: dates and repeats, XP curve, loot table, streaks, badges and reminder timing. They are pure, dependency-free TypeScript with no DOM or Worker APIs. esbuild bundles them into the browser app, and Wrangler bundles the same modules into the Worker. A quest completed through Claude, a reminder sent by the cron, and a checkbox ticked in the app all go through the same code.
+
+**Types at the boundaries.** Anything that crosses a trust boundary (MCP tool arguments, API bodies, rows read back from D1, old saves in `localStorage`) arrives as `unknown` and is validated or normalized before the rest of the code sees it. Inside, the compiler holds the line: `strict`, plus type-aware ESLint (`strictTypeChecked`).
 
 **Time-zone-safe dates.** Dates are `YYYY-MM-DD` strings in the user's calendar, and the math runs on UTC `Date`s. The phone, the Worker and CI therefore agree no matter where each one runs. The test suite runs under several machine time zones to prove it.
 
@@ -43,48 +45,58 @@ flowchart LR
 ## Project layout
 
 ```
-public/                     the PWA (static, no build step)
-  index.html, styles.css, sw.js
-  js/main.js                entry point: wiring and boot
-  js/{render,journey,editor,settings,reminders,sync,actions,toast,store,dom}.js
-  js/core/                  pure logic shared with the Worker (JSDoc-typed, type-checked)
-    dates.js                calendar math, repeat rules, DST-aware zone conversion
-    rules.js                XP curve, streaks, loot roll, completing quests, moods
-    stats.js                derived stats and badges
-    quests.js               views, sorting, roll-forward of missed repeats, input validation
-    reminders.js            when a reminder fires (used by app and cron)
-    state.js                fresh state, migrations, normalization
-    ics.js                  calendar export with alarms
-src/                        the Cloudflare Worker
-  worker.js                 entry: OAuth provider in front of /mcp, cron handler
-  api.js                    /api/* routes (sync, push subscriptions, outbox)
-  authorize.js              OAuth consent page (proves ownership with the sync code)
-  mcp/server.js             MCP over Streamable HTTP, stateless JSON-RPC 2.0
-  mcp/tools.js              tool schemas and implementations
-  reminders.js, push.js     reminder cron and VAPID Web Push
-  db.js                     every SQL statement, in one place
+src/
+  core/                     pure logic shared by the browser and the Worker
+    types.ts                Quest, State, LogEvent (a discriminated union), ...
+    dates.ts                calendar math, repeat rules, DST-aware zone conversion
+    rules.ts                XP curve, streaks, loot roll, completing quests, moods
+    stats.ts                derived stats and badges
+    quests.ts               views, sorting, roll-forward of missed repeats, input validation
+    reminders.ts            when a reminder fires (used by app and cron)
+    state.ts                fresh state, migrations, normalization
+    ics.ts                  calendar export with alarms
+  client/                   the PWA, bundled by esbuild into public/js/app.js
+    main.ts                 entry point: wiring and boot
+    render.ts, journey.ts, editor.ts, settings.ts, reminders.ts, sync.ts, actions.ts, ...
+    sw.ts                   service worker → public/sw.js (cache name = content hash of the build)
+  worker/                   the Cloudflare Worker
+    worker.ts               entry: OAuth provider in front of /mcp, cron handler
+    api.ts                  /api/* routes (sync, push subscriptions, outbox)
+    authorize.ts            OAuth consent page (proves ownership with the sync code)
+    mcp/server.ts           MCP over Streamable HTTP, stateless JSON-RPC 2.0
+    mcp/tools.ts            tool schemas and implementations
+    reminders.ts, push.ts   reminder cron and VAPID Web Push
+    db.ts                   every SQL statement, in one place
+public/                     static files: index.html, styles.css, manifest, icons (+ build output)
 test/unit/                  core logic
 test/worker/                API, MCP, cron, push and the full OAuth flow against real SQLite
 e2e/                        Playwright tests on desktop and mobile viewports
+worker-configuration.d.ts   Worker runtime and binding types, generated by `npm run types`
 ```
+
+There are three TypeScript programs, because the code runs in three different global scopes: the browser (`tsconfig.json`, DOM), the service worker (`tsconfig.sw.json`, WebWorker), and the Worker plus tests (`tsconfig.worker.json`, workerd + Node).
 
 ## Testing and quality
 
 | Command                                                       | What it does                                                                                                                                                |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`                                                    | 120 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter |
+| `npm test`                                                    | 121 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter |
 | `npm run test:e2e`                                            | Playwright on Desktop Chrome and Pixel 7: first run, completing quests, mood check-ins, the editor, Journey                                                 |
 | `npm run test:coverage`                                       | about 94% line coverage of `core/` and `src/`                                                                                                               |
-| `npm run lint` · `npm run format:check` · `npm run typecheck` | ESLint, Prettier, and `tsc --checkJs` over the browser code                                                                                                 |
+| `npm run lint` · `npm run format:check` · `npm run typecheck` | Type-aware ESLint (`strictTypeChecked`), Prettier, and `tsc` over all three programs                                                                        |
 | `npm run check`                                               | all of the above except e2e                                                                                                                                 |
 
 Highlights:
 
 - **OAuth end to end:** discovery → dynamic client registration → consent with the sync code → PKCE token exchange → authenticated MCP tool call, all through the real Worker entry point.
 - **Loot math:** a seeded PRNG checks the drop rates against the published table over 50,000 rolls, and separate tests check the pity timer.
-- **Bugs found during the refactor, now covered by tests:** monthly repeats from Jan 31 used to skip into March; calendar events at 11:45 PM ended before they started; a midnight timer wrote a stray field into synced state.
+- **Bugs found during the refactor, now covered by tests:** monthly repeats from Jan 31 used to skip into March; calendar events at 11:45 PM ended before they started; a midnight timer wrote a stray field into synced state. The TypeScript migration caught one more: the reminder cron read saved state without normalizing it, so a quest from an older save with no `remind` field could fire at the wrong time.
 
-CI runs everything on every push and pull request.
+CI runs everything on every push and pull request, including a check that `worker-configuration.d.ts` still matches `wrangler.jsonc`.
+
+## Branches
+
+`feature/*` → pull request into `dev` → pull request into `main`. Both `main` and `dev` are protected: changes land only through pull requests with CI green. Pushing to `main` deploys production.
 
 ## Claude connector (MCP)
 
@@ -139,7 +151,9 @@ echo "VAPID_PRIVATE_JWK='<private key json>'" > .dev.vars
 npx wrangler dev --test-scheduled           # http://localhost:8787
 curl "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"   # run the reminder cron by hand
 
-npm run serve:static                        # just the PWA, offline mode, on :4173
+npm run build:watch                         # rebuild the PWA on save (wrangler dev also builds on start)
+npm run serve:static                        # just the PWA, offline mode, on :4173 (after npm run build)
+npm run types                               # regenerate worker-configuration.d.ts after editing wrangler.jsonc
 ```
 
 ## Notes

@@ -1,133 +1,204 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Quest Log</title>
-<meta name="description" content="A gamified, ADHD-friendly quest tracker with scheduling, reminders and variable-ratio loot.">
-<meta name="theme-color" content="#2f6f5e">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Quest Log">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-</head>
-<body>
-<div class="wrap">
-  <header class="top">
-    <div>
-      <h1>Quest Log</h1>
-      <p class="sub">Small moves count. Check one off and see what drops.</p>
-    </div>
-    <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙</button>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Quest Log</title>
+    <meta
+      name="description"
+      content="A gamified, ADHD-friendly quest tracker with scheduling, reminders and variable-ratio loot."
+    />
+    <meta name="theme-color" content="#2f6f5e" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Quest Log" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div>
+          <h1>Quest Log</h1>
+          <p class="sub">Small moves count. Check one off and see what drops.</p>
+        </div>
+        <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙</button>
+      </header>
 
-  <div class="hud">
-    <div class="hud-row"><span class="lvl" id="lvl">Level 1</span><span class="mono" id="xp">0 XP</span></div>
-    <div class="bar"><i id="bar"></i></div>
-    <div class="hud-row stats"><span id="streak"></span><span id="today-count"></span></div>
-    <button class="freeze" id="freeze">Frozen? Do the smallest possible step for 2 minutes (+5 XP)</button>
-  </div>
-
-  <div id="notifBanner" class="banner" hidden>
-    <span>Turn on reminders so scheduled quests can nudge you.</span>
-    <span class="banner-btns"><button class="btn small ghost" id="dismissNotif">Not now</button><button class="btn small" id="enableNotif">Turn on</button></span>
-  </div>
-
-  <nav class="tabs" role="tablist">
-    <button role="tab" data-view="now" class="on">Now</button>
-    <button role="tab" data-view="upcoming">Upcoming</button>
-    <button role="tab" data-view="all">All</button>
-    <button role="tab" data-view="loot">Loot</button>
-    <button role="tab" data-view="journey">Journey</button>
-  </nav>
-
-  <main id="view"></main>
-
-  <button class="fab" id="addBtn" aria-label="Add quest">+ Quest</button>
-</div>
-
-<!-- Quest editor -->
-<dialog id="editor">
-  <form method="dialog" id="editForm">
-    <h2 id="edTitle">New quest</h2>
-    <label>Quest<input name="name" required maxlength="120" placeholder="Something small you can actually do"></label>
-    <label>Tiny first step <span class="hint">(what to do when you're frozen)</span><input name="tiny" maxlength="160" placeholder="e.g. just open the page"></label>
-    <div class="row2">
-      <label>Category<input name="g" list="cats" maxlength="40" placeholder="Career"></label>
-      <label>XP
-        <select name="xp"><option>5</option><option>10</option><option selected>15</option><option>20</option><option>25</option><option>30</option><option>50</option></select>
-      </label>
-    </div>
-    <datalist id="cats"></datalist>
-    <fieldset>
-      <legend>Schedule</legend>
-      <div class="row2">
-        <label>Date<input type="date" name="due"></label>
-        <label>Time<input type="time" name="time"></label>
+      <div class="hud">
+        <div class="hud-row"><span class="lvl" id="lvl">Level 1</span><span class="mono" id="xp">0 XP</span></div>
+        <div class="bar"><i id="bar"></i></div>
+        <div class="hud-row stats"><span id="streak"></span><span id="today-count"></span></div>
+        <button class="freeze" id="freeze">Frozen? Do the smallest possible step for 2 minutes (+5 XP)</button>
       </div>
-      <div class="row2">
-        <label>Repeat
-          <select name="repeat">
-            <option value="none">Doesn't repeat</option>
-            <option value="daily">Every day</option>
-            <option value="weekdays">Weekdays</option>
-            <option value="weekly">Every week</option>
-            <option value="monthly">Every month</option>
+
+      <div id="notifBanner" class="banner" hidden>
+        <span>Turn on reminders so scheduled quests can nudge you.</span>
+        <span class="banner-btns"
+          ><button class="btn small ghost" id="dismissNotif">Not now</button
+          ><button class="btn small" id="enableNotif">Turn on</button></span
+        >
+      </div>
+
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-view="now" class="on">Now</button>
+        <button role="tab" data-view="upcoming">Upcoming</button>
+        <button role="tab" data-view="all">All</button>
+        <button role="tab" data-view="loot">Loot</button>
+        <button role="tab" data-view="journey">Journey</button>
+      </nav>
+
+      <main id="view"></main>
+
+      <button class="fab" id="addBtn" aria-label="Add quest">+ Quest</button>
+    </div>
+
+    <!-- Quest editor -->
+    <dialog id="editor">
+      <form method="dialog" id="editForm">
+        <h2 id="edTitle">New quest</h2>
+        <label
+          >Quest<input name="name" required maxlength="120" placeholder="Something small you can actually do"
+        /></label>
+        <label
+          >Tiny first step <span class="hint">(what to do when you're frozen)</span
+          ><input name="tiny" maxlength="160" placeholder="e.g. just open the page"
+        /></label>
+        <div class="row2">
+          <label>Category<input name="g" list="cats" maxlength="40" placeholder="Career" /></label>
+          <label
+            >XP
+            <select name="xp">
+              <option>5</option>
+              <option>10</option>
+              <option selected>15</option>
+              <option>20</option>
+              <option>25</option>
+              <option>30</option>
+              <option>50</option>
+            </select>
+          </label>
+        </div>
+        <datalist id="cats"></datalist>
+        <fieldset>
+          <legend>Schedule</legend>
+          <div class="row2">
+            <label>Date<input type="date" name="due" /></label>
+            <label>Time<input type="time" name="time" /></label>
+          </div>
+          <div class="row2">
+            <label
+              >Repeat
+              <select name="repeat">
+                <option value="none">Doesn't repeat</option>
+                <option value="daily">Every day</option>
+                <option value="weekdays">Weekdays</option>
+                <option value="weekly">Every week</option>
+                <option value="monthly">Every month</option>
+              </select>
+            </label>
+            <label
+              >Remind me
+              <select name="remind">
+                <option value="-1">No reminder</option>
+                <option value="0" selected>At the time</option>
+                <option value="15">15 min before</option>
+                <option value="60">1 hour before</option>
+                <option value="1440">1 day before</option>
+              </select>
+            </label>
+          </div>
+          <p class="hint">No time set? Reminders go off at 9:00 AM.</p>
+        </fieldset>
+        <div class="ed-actions">
+          <button type="button" class="btn ghost danger" id="edDelete">Delete</button>
+          <button type="button" class="btn ghost" id="edIcs">Add to calendar</button>
+          <span class="spacer"></span>
+          <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
+          <button value="save" class="btn" id="edSave">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Settings -->
+    <dialog id="settings">
+      <form method="dialog">
+        <h2>Settings</h2>
+        <div class="set-row">
+          <div>
+            <b>Reminders</b>
+            <p class="hint" id="notifStatus"></p>
+          </div>
+          <button type="button" class="btn small" id="notifBtn2">Turn on</button>
+        </div>
+        <div class="set-block" id="syncBox" hidden>
+          <div>
+            <b>Sync &amp; push reminders</b>
+            <p class="hint" id="syncStatus"></p>
+          </div>
+          <div class="btns">
+            <button type="button" class="btn small" id="syncOn">Turn on sync</button>
+            <button type="button" class="btn small ghost" id="syncLink">Link with a code</button>
+            <button type="button" class="btn small ghost" id="syncShow">Show sync code</button>
+            <button type="button" class="btn small ghost" id="syncTest">Send test notification</button>
+            <button type="button" class="btn small ghost danger" id="syncOff">Turn off sync</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <div>
+            <b>Send to my phone's calendar</b>
+            <p class="hint">
+              Downloads every scheduled quest as a calendar file with alarms. Most reliable way to get reminders when
+              the app is closed.
+            </p>
+          </div>
+          <button type="button" class="btn small" id="icsAll">Export</button>
+        </div>
+        <div class="set-row">
+          <div>
+            <b>Back up</b>
+            <p class="hint">Save your quests, XP and loot to a file.</p>
+          </div>
+          <button type="button" class="btn small" id="exportBtn">Export</button>
+        </div>
+        <div class="set-row">
+          <div>
+            <b>Restore</b>
+            <p class="hint">Load a backup file.</p>
+          </div>
+          <label class="btn small">Import<input type="file" id="importFile" accept="application/json" hidden /></label>
+        </div>
+        <div class="set-row">
+          <div><b>Theme</b></div>
+          <select id="themeSel">
+            <option value="">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
           </select>
-        </label>
-        <label>Remind me
-          <select name="remind">
-            <option value="-1">No reminder</option>
-            <option value="0" selected>At the time</option>
-            <option value="15">15 min before</option>
-            <option value="60">1 hour before</option>
-            <option value="1440">1 day before</option>
-          </select>
-        </label>
-      </div>
-      <p class="hint">No time set? Reminders go off at 9:00 AM.</p>
-    </fieldset>
-    <div class="ed-actions">
-      <button type="button" class="btn ghost danger" id="edDelete">Delete</button>
-      <button type="button" class="btn ghost" id="edIcs">Add to calendar</button>
-      <span class="spacer"></span>
-      <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
-      <button value="save" class="btn" id="edSave">Save</button>
+        </div>
+        <div class="set-row">
+          <div>
+            <b>Start over</b>
+            <p class="hint">Clears everything.</p>
+          </div>
+          <button type="button" class="btn small danger" id="resetBtn">Reset</button>
+        </div>
+        <div class="ed-actions"><span class="spacer"></span><button class="btn">Done</button></div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">
+      <div class="rar" id="trar"></div>
+      <div class="ttl" id="tttl"></div>
+      <div class="d" id="td"></div>
     </div>
-  </form>
-</dialog>
 
-<!-- Settings -->
-<dialog id="settings">
-  <form method="dialog">
-    <h2>Settings</h2>
-    <div class="set-row"><div><b>Reminders</b><p class="hint" id="notifStatus"></p></div><button type="button" class="btn small" id="notifBtn2">Turn on</button></div>
-    <div class="set-block" id="syncBox" hidden>
-      <div><b>Sync &amp; push reminders</b><p class="hint" id="syncStatus"></p></div>
-      <div class="btns">
-        <button type="button" class="btn small" id="syncOn">Turn on sync</button>
-        <button type="button" class="btn small ghost" id="syncLink">Link with a code</button>
-        <button type="button" class="btn small ghost" id="syncShow">Show sync code</button>
-        <button type="button" class="btn small ghost" id="syncTest">Send test notification</button>
-        <button type="button" class="btn small ghost danger" id="syncOff">Turn off sync</button>
-      </div>
-    </div>
-    <div class="set-row"><div><b>Send to my phone's calendar</b><p class="hint">Downloads every scheduled quest as a calendar file with alarms. Most reliable way to get reminders when the app is closed.</p></div><button type="button" class="btn small" id="icsAll">Export</button></div>
-    <div class="set-row"><div><b>Back up</b><p class="hint">Save your quests, XP and loot to a file.</p></div><button type="button" class="btn small" id="exportBtn">Export</button></div>
-    <div class="set-row"><div><b>Restore</b><p class="hint">Load a backup file.</p></div><label class="btn small">Import<input type="file" id="importFile" accept="application/json" hidden></label></div>
-    <div class="set-row"><div><b>Theme</b></div>
-      <select id="themeSel"><option value="">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
-    <div class="set-row"><div><b>Start over</b><p class="hint">Clears everything.</p></div><button type="button" class="btn small danger" id="resetBtn">Reset</button></div>
-    <div class="ed-actions"><span class="spacer"></span><button class="btn">Done</button></div>
-  </form>
-</dialog>
-
-<div class="toast" id="toast" role="status" aria-live="polite"><div class="rar" id="trar"></div><div class="ttl" id="tttl"></div><div class="d" id="td"></div></div>
-
-<script src="app.js"></script>
-</body>
+    <script type="module" src="js/main.js"></script>
+  </body>
 </html>

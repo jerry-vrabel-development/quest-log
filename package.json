@@ -5,14 +5,35 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p .",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
+    "serve:static": "node scripts/serve-static.mjs",
     "vapid": "node scripts/gen-vapid.mjs",
     "db:init": "wrangler d1 execute quest-log --remote --file=schema.sql",
     "db:init:local": "wrangler d1 execute quest-log --local --file=schema.sql"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.56.1",
+    "@vitest/coverage-v8": "^3.2.7",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
     "wrangler": "^4"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^1.2.3"
+  },
+  "engines": {
+    "node": ">=22.5"
   }
 }

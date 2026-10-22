@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.sw.json && tsc -p tsconfig.worker.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.sw.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.e2e.json",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
     "serve:static": "node scripts/serve-static.mjs",
     "vapid": "node scripts/gen-vapid.mjs",

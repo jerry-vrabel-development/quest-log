@@ -1,0 +1,9 @@
+{
+  // Playwright tests: Node for the runner, DOM for the code that runs inside the page.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["e2e", "playwright.config.ts"]
+}

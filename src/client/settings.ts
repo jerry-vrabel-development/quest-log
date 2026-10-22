@@ -5,6 +5,7 @@ import { $, download } from "./dom";
 import { updateNotifUI } from "./reminders";
 import { render } from "./render";
 import { S, reset, save, setState, today } from "./store";
+import { setSoundOn, soundOn } from "./sound";
 import { pushState } from "./sync";
 import { toast } from "./toast";
 
@@ -44,6 +45,11 @@ export function initSettings(): void {
   $("#settingsBtn").onclick = () => {
     updateNotifUI();
     $<HTMLDialogElement>("#settings").showModal();
+  };
+  const soundSel = $<HTMLSelectElement>("#soundSel");
+  soundSel.value = soundOn() ? "1" : "0";
+  soundSel.onchange = () => {
+    setSoundOn(soundSel.value === "1");
   };
   $("#themeSel").onchange = (e) => {
     const v = (e.target as HTMLSelectElement).value as State["theme"];

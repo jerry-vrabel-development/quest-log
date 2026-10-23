@@ -77,10 +77,11 @@ export function setQuestDone(q: Quest, checked: boolean): void {
   reward(before, { kind: "quest", xp, questXp: q.xp, repeatCount: q.repeat !== "none" ? q.count : 0 });
 }
 
-export function breakFreeze(): void {
+/** The two minutes are done (the dice already played the marker when they started). */
+export function finishFreeze(step?: string): void {
   mark();
   const before = snapshot();
-  reward(before, { kind: "freeze", xp: recordFreeze(S, when()).xp });
+  reward(before, { kind: "freeze", xp: recordFreeze(S, when(), step).xp });
 }
 
 export function logMood(v: number): void {

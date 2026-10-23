@@ -81,6 +81,56 @@ const SONGS: Record<Tier, (c: AudioContext) => void> = {
   },
 };
 
+/** The die hits the table: a short wooden clack, softer with each bounce (`strength` 0-1). */
+export function playClack(strength = 1): void {
+  const c = audio();
+  if (!c) return;
+  const len = Math.floor(c.sampleRate * 0.04);
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 8);
+  const src = c.createBufferSource();
+  const filter = c.createBiquadFilter();
+  const gain = c.createGain();
+  filter.type = "bandpass";
+  filter.frequency.value = 1400 + Math.random() * 900;
+  filter.Q.value = 3;
+  gain.gain.value = 0.9 * strength;
+  src.buffer = buf;
+  src.connect(filter).connect(gain).connect(c.destination);
+  src.start();
+  tone(c, 170, 0, 0.06, "triangle", 0.12 * strength); // the knock of the table
+}
+
+/** The die settles: a bright two-note "ding". */
+export function playLand(): void {
+  const c = audio();
+  if (!c) return;
+  tone(c, 1046.5, 0, 0.25, "triangle", 0.14);
+  tone(c, 1568, 0.08, 0.4, "sine", 0.1);
+}
+
+/** Two minutes are up: a gentle two-note bell. */
+export function playTimeUp(): void {
+  const c = audio();
+  if (!c) return;
+  tone(c, 784, 0, 0.6, "sine", 0.14);
+  tone(c, 1174.7, 0.18, 0.9, "sine", 0.12);
+}
+
+/** Opening the app: a warm rising chime. */
+export function playWelcome(): void {
+  const c = audio();
+  if (!c) return;
+  [523.3, 659.3, 784, 1046.5].forEach((f, i) => tone(c, f, i * 0.08, 0.5, "sine", 0.09));
+}
+
+/** Leaving the app: a soft falling chime ("rest well"). Best effort: some phones cut audio on exit. */
+export function playFarewell(): void {
+  if (!ctx || ctx.state !== "running" || !soundOn()) return;
+  [784, 659.3, 523.3].forEach((f, i) => tone(ctx as AudioContext, f, i * 0.1, 0.6, "sine", 0.08));
+}
+
 /** The payoff sound for a tier. */
 export function playReward(tier: Tier): void {
   const c = audio();

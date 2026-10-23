@@ -148,7 +148,7 @@ function describeEvent(e: LogEvent): string {
     case "quest":
       return `✓ ${e.name}${e.via === "claude" ? " · via Claude" : ""}`;
     case "freeze":
-      return "🧊 Broke the freeze";
+      return e.step ? `🧊 Broke the freeze: ${e.step}` : "🧊 Broke the freeze";
     case "badge":
       return `🏅 Badge: ${e.name}`;
     case "mood":

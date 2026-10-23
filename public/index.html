@@ -37,12 +37,12 @@
         <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙</button>
       </header>
 
-      <div class="hud">
+      <section class="hud" aria-label="Progress">
         <div class="hud-row"><span class="lvl" id="lvl">Level 1</span><span class="mono" id="xp">0 XP</span></div>
         <div class="bar"><i id="bar"></i></div>
         <div class="hud-row stats"><span id="streak"></span><span id="today-count"></span></div>
         <button class="freeze" id="freeze">🎲 Frozen? Roll for one tiny step, 2 minutes (+5 XP)</button>
-      </div>
+      </section>
 
       <div id="notifBanner" class="banner" hidden>
         <span>Turn on reminders so scheduled quests can nudge you.</span>
@@ -52,15 +52,49 @@
         >
       </div>
 
-      <nav class="tabs" role="tablist">
-        <button role="tab" data-view="now" class="on">Now</button>
-        <button role="tab" data-view="upcoming">Upcoming</button>
-        <button role="tab" data-view="all">All</button>
-        <button role="tab" data-view="loot">Loot</button>
-        <button role="tab" data-view="journey">Journey</button>
+      <nav class="tabs-nav" aria-label="Views">
+        <div class="tabs" role="tablist" aria-label="Views">
+          <button
+            role="tab"
+            id="tab-now"
+            data-view="now"
+            aria-controls="view"
+            aria-selected="true"
+            tabindex="0"
+            class="on"
+          >
+            Now
+          </button>
+          <button
+            role="tab"
+            id="tab-upcoming"
+            data-view="upcoming"
+            aria-controls="view"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            Upcoming
+          </button>
+          <button role="tab" id="tab-all" data-view="all" aria-controls="view" aria-selected="false" tabindex="-1">
+            All
+          </button>
+          <button role="tab" id="tab-loot" data-view="loot" aria-controls="view" aria-selected="false" tabindex="-1">
+            Loot
+          </button>
+          <button
+            role="tab"
+            id="tab-journey"
+            data-view="journey"
+            aria-controls="view"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            Journey
+          </button>
+        </div>
       </nav>
 
-      <main id="view"></main>
+      <main><div id="view" role="tabpanel" aria-labelledby="tab-now" tabindex="0"></div></main>
 
       <button class="fab" id="addBtn" aria-label="Add quest">+ Quest</button>
     </div>
@@ -219,27 +253,27 @@
         </div>
         <div class="set-row">
           <div>
-            <b>Sound &amp; buzz</b>
+            <b id="soundLabel">Sound &amp; buzz</b>
             <p class="hint">A click the moment you finish something, then the reward. Big wins open a loot chest.</p>
           </div>
-          <select id="soundSel">
+          <select id="soundSel" aria-labelledby="soundLabel">
             <option value="1">On</option>
             <option value="0">Off</option>
           </select>
         </div>
         <div class="set-row">
           <div>
-            <b>Opening animation</b>
+            <b id="splashLabel">Opening animation</b>
             <p class="hint">A welcome screen and chime when you open the app.</p>
           </div>
-          <select id="splashSel">
+          <select id="splashSel" aria-labelledby="splashLabel">
             <option value="1">On</option>
             <option value="0">Off</option>
           </select>
         </div>
         <div class="set-row">
-          <div><b>Theme</b></div>
-          <select id="themeSel">
+          <div><b id="themeLabel">Theme</b></div>
+          <select id="themeSel" aria-labelledby="themeLabel">
             <option value="">System</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>

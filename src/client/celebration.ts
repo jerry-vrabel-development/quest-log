@@ -36,14 +36,15 @@ export function celebrate({ celebration, item, toasts }: Payout): void {
   }, REWARD_DELAY_MS);
 }
 
-let open: HTMLElement | null = null;
+let open: HTMLDialogElement | null = null;
 
-/** The full-screen loot chest for jackpots. Tap anywhere, press Esc or "Collect" to close. */
+/**
+ * The full-screen loot chest for jackpots: a native modal <dialog>, so the browser traps focus,
+ * closes it on Esc, and returns focus to where it was. Tap anywhere or "Collect" to close.
+ */
 function openChest(reasons: string[], item: LootItem | null): void {
-  open?.remove();
-  const overlay = el("div", "chest-overlay");
-  overlay.setAttribute("role", "dialog");
-  overlay.setAttribute("aria-modal", "true");
+  open?.close();
+  const overlay = el("dialog", "chest-overlay");
   overlay.setAttribute("aria-label", reasons[0] ?? "Jackpot");
   if (item) overlay.dataset.rarity = item.rar;
 
@@ -69,16 +70,14 @@ function openChest(reasons: string[], item: LootItem | null): void {
   document.body.append(overlay);
   open = overlay;
 
-  const close = () => {
+  overlay.addEventListener("close", () => {
     overlay.remove();
     if (open === overlay) open = null;
-    document.removeEventListener("keydown", onKey);
-  };
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") close();
-  };
-  overlay.addEventListener("click", close);
-  document.addEventListener("keydown", onKey);
+  });
+  overlay.addEventListener("click", () => {
+    overlay.close();
+  });
+  overlay.showModal();
   collect.focus();
 
   if (prefersReducedMotion()) {
@@ -88,8 +87,11 @@ function openChest(reasons: string[], item: LootItem | null): void {
   setTimeout(() => {
     overlay.classList.add("opened");
     const box = stage.getBoundingClientRect();
-    confetti(180, { x: box.left + box.width / 2, y: box.top + box.height / 2 });
-    setTimeout(() => confetti(120), 450);
+    // Draw inside the dialog: a modal dialog sits in the top layer, above anything on <body>.
+    confetti(180, { x: box.left + box.width / 2, y: box.top + box.height / 2 }, overlay);
+    setTimeout(() => {
+      confetti(120, undefined, overlay);
+    }, 450);
   }, CHEST_OPEN_MS);
 }
 

@@ -7,12 +7,15 @@ const COLORS = ["--accent", "--xp", "--rare", "--epic", "--legend"];
 
 export const prefersReducedMotion = (): boolean => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Bursts `amount` pieces from a point (defaults to the middle of the screen). */
-export function confetti(amount: number, origin?: { x: number; y: number }): void {
+/**
+ * Bursts `amount` pieces from a point (defaults to the middle of the screen). Pass `parent` to draw
+ * inside a modal dialog, which sits in the top layer above anything appended to <body>.
+ */
+export function confetti(amount: number, origin?: { x: number; y: number }, parent: HTMLElement = document.body): void {
   if (prefersReducedMotion()) return;
   const canvas = el("canvas", "confetti");
   canvas.setAttribute("aria-hidden", "true");
-  document.body.append(canvas);
+  parent.append(canvas);
   const g = canvas.getContext("2d");
   if (!g) {
     canvas.remove();

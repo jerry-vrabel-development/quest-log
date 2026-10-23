@@ -28,9 +28,32 @@ initDice();
 initMoodEditor();
 initSessionSounds();
 
-for (const btn of document.querySelectorAll<HTMLElement>(".tabs button")) {
+// The progress panel is sticky; scroll focused items to just below it, never underneath.
+const hud = $(".hud");
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty("--hud-h", `${String(hud.offsetHeight + 16)}px`);
+}).observe(hud);
+
+// WAI-ARIA tabs: click or Enter selects; Left/Right (and Home/End) move between tabs.
+const tabs = [...document.querySelectorAll<HTMLElement>(".tabs button")];
+const selectTab = (btn: HTMLElement) => {
+  if (isView(btn.dataset.view)) setView(btn.dataset.view);
+};
+for (const [i, btn] of tabs.entries()) {
   btn.onclick = () => {
-    if (isView(btn.dataset.view)) setView(btn.dataset.view);
+    selectTab(btn);
+  };
+  btn.onkeydown = (e) => {
+    const next =
+      e.key === "ArrowRight" ? tabs[(i + 1) % tabs.length]
+      : e.key === "ArrowLeft" ? tabs[(i - 1 + tabs.length) % tabs.length]
+      : e.key === "Home" ? tabs[0]
+      : e.key === "End" ? tabs.at(-1)
+      : undefined;
+    if (!next) return;
+    e.preventDefault();
+    selectTab(next);
+    next.focus();
   };
 }
 $("#addBtn").onclick = () => openEditor(null);

@@ -36,7 +36,7 @@ function tiles(box: HTMLElement, st: Stats): void {
 }
 
 function xpChart(box: HTMLElement, st: Stats, days: string[], t: string): void {
-  box.append(el("h3", "", `XP per day · last ${CHART_DAYS} days`));
+  box.append(el("h2", "", `XP per day · last ${CHART_DAYS} days`));
   const max = Math.max(10, ...days.map((d) => st.xpByDay[d] || 0));
   const bars = el("div", "chart bars");
   for (const d of days) {
@@ -52,7 +52,7 @@ function xpChart(box: HTMLElement, st: Stats, days: string[], t: string): void {
 
 function moodChart(box: HTMLElement, st: Stats, days: string[], t: string): void {
   const moods = moodByDay(S.moods);
-  box.append(el("h3", "", `Mood · last ${CHART_DAYS} days`));
+  box.append(el("h2", "", `Mood · last ${CHART_DAYS} days`));
   if (!Object.keys(moods).length) {
     box.append(el("div", "empty", "No check-ins yet. Use the mood card on the Now tab."));
     return;
@@ -93,7 +93,7 @@ function moodChart(box: HTMLElement, st: Stats, days: string[], t: string): void
 }
 
 function badges(box: HTMLElement): void {
-  box.append(el("h3", "", "Badges"));
+  box.append(el("h2", "", "Badges"));
   const grid = el("div", "badges");
   for (const [id, icon, name, desc] of BADGES) {
     const got = S.badges[id];
@@ -109,7 +109,7 @@ function badges(box: HTMLElement): void {
 }
 
 function hallOfFame(box: HTMLElement, st: Stats, t: string): void {
-  box.append(el("h3", "", "Hall of fame · your best days"));
+  box.append(el("h2", "", "Hall of fame · your best days"));
   const best = Object.entries(st.xpByDay)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
@@ -129,7 +129,7 @@ function hallOfFame(box: HTMLElement, st: Stats, t: string): void {
 function categories(box: HTMLElement, st: Stats): void {
   const entries = Object.entries(st.byCat).sort((a, b) => b[1] - a[1]);
   if (!entries.length) return;
-  box.append(el("h3", "", "Quests by area"));
+  box.append(el("h2", "", "Quests by area"));
   const max = entries[0][1];
   const cats = el("div", "cats");
   for (const [c, n] of entries) {
@@ -158,7 +158,7 @@ function describeEvent(e: LogEvent): string {
 }
 
 function activityLog(box: HTMLElement, t: string): void {
-  box.append(el("h3", "", "Activity log"));
+  box.append(el("h2", "", "Activity log"));
   if (!S.log.length) box.append(el("div", "empty", "Everything you do will be logged here."));
   const ul = el("ul", "log");
   let lastDay = "";

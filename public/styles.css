@@ -6,14 +6,16 @@
   --line: #e4dfd4;
   --accent: #2f6f5e;
   --accent-soft: #dcebe5;
+  /* Bright gold for fills and glows; --xp-text is the AA-contrast shade for small text. */
   --xp: #c7832a;
+  --xp-text: #97631f;
   --warn: #b4472f;
   --warn-soft: #f6e1da;
-  --common: #5f7a8a;
-  --rare: #3b6fd1;
+  --common: #597281;
+  --rare: #396bca;
   --epic: #8a3fc7;
-  --legend: #c7832a;
-  --done: #9a958b;
+  --legend: #97631f;
+  --done: #716e66;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -26,13 +28,14 @@
     --accent: #6cc3a8;
     --accent-soft: #1f3a32;
     --xp: #e3a64f;
+    --xp-text: #e3a64f;
     --warn: #ef8a6f;
     --warn-soft: #3a221b;
     --common: #93aebd;
     --rare: #7aa2f0;
     --epic: #c08af0;
     --legend: #e3a64f;
-    --done: #6f6a61;
+    --done: #8a867f;
     color-scheme: dark;
   }
 }
@@ -45,13 +48,14 @@
   --accent: #6cc3a8;
   --accent-soft: #1f3a32;
   --xp: #e3a64f;
+  --xp-text: #e3a64f;
   --warn: #ef8a6f;
   --warn-soft: #3a221b;
   --common: #93aebd;
   --rare: #7aa2f0;
   --epic: #c08af0;
   --legend: #e3a64f;
-  --done: #6f6a61;
+  --done: #8a867f;
   color-scheme: dark;
 }
 * {
@@ -97,6 +101,11 @@ h1 {
   height: 42px;
   font-size: 1.2rem;
   cursor: pointer;
+}
+/* Keep keyboard focus visible below the sticky progress panel (WCAG 2.2 Focus Not Obscured).
+   --hud-h is measured in main.ts. */
+html {
+  scroll-padding-top: var(--hud-h, 0px);
 }
 .hud {
   background: var(--card);
@@ -193,14 +202,16 @@ h1 {
   color: var(--bg);
   border-color: var(--ink);
 }
-h3 {
+/* View section headings (h2: the page title is the h1). */
+#view h2 {
   font-size: 0.78rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
   margin: 22px 0 8px;
 }
-h3.overdue {
+#view h2.overdue {
   color: var(--warn);
 }
 .q {
@@ -229,6 +240,23 @@ h3.overdue {
   flex: 1;
   min-width: 0;
   cursor: pointer;
+  /* a <button> that looks like the row text */
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.q .t:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.q .name,
+.q .tiny {
+  display: block;
 }
 .q .name {
   font-weight: 500;
@@ -265,7 +293,7 @@ h3.overdue {
 .q .xp {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.8rem;
-  color: var(--xp);
+  color: var(--xp-text);
   flex: none;
 }
 .q.done .name {
@@ -873,7 +901,7 @@ legend {
 .log .xp {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.78rem;
-  color: var(--xp);
+  color: var(--xp-text);
 }
 .banner .banner-btns {
   display: flex;
@@ -891,21 +919,36 @@ legend {
   z-index: 60;
 }
 .chest-overlay {
-  --glow: var(--legend);
+  --glow: var(--xp);
+  --glow-text: var(--xp-text); /* the AA-contrast shade of --glow, for text */
   position: fixed;
   inset: 0;
   z-index: 50;
+  /* A native <dialog>: undo the browser's and our own dialog box styles so it fills the screen. */
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--ink);
   display: grid;
   place-items: center;
   padding: 16px;
   background: color-mix(in srgb, #000 62%, transparent);
   animation: chest-fade 0.25s ease-out;
 }
+.chest-overlay::backdrop {
+  background: transparent;
+}
 .chest-overlay[data-rarity="rare"] {
   --glow: var(--rare);
+  --glow-text: var(--rare);
 }
 .chest-overlay[data-rarity="epic"] {
   --glow: var(--epic);
+  --glow-text: var(--epic);
 }
 .chest-card {
   width: min(380px, 100%);
@@ -1025,7 +1068,11 @@ legend {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--glow);
+  color: var(--glow-text);
+}
+/* The item name stays in ink on the tinted panel; the label above already names the rarity. */
+.chest-card .chest-loot b {
+  color: var(--ink);
 }
 .chest-desc {
   color: var(--muted);

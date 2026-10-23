@@ -30,11 +30,15 @@ function questRow(q: Quest, t: string): HTMLElement {
   cb.setAttribute("aria-label", "Complete " + q.name);
   cb.onchange = () => setQuestDone(q, cb.checked);
 
-  const body = el("div", "t");
-  body.onclick = () => openEditor(q);
-  body.append(el("div", "name", q.name));
-  if (q.tiny && !q.done) body.append(el("div", "tiny", "Tiny step: " + q.tiny));
-  const meta = el("div", "meta");
+  // A real button, so the editor opens from the keyboard too (Tab to it, then Enter or Space).
+  const body = el("button", "t");
+  body.type = "button";
+  body.onclick = () => {
+    openEditor(q);
+  };
+  body.append(el("span", "name", q.name));
+  if (q.tiny && !q.done) body.append(el("span", "tiny", "Tiny step: " + q.tiny));
+  const meta = el("span", "meta");
   if (q.due && !q.done) meta.append(el("span", "chip" + (late ? " warn" : ""), fmtDue(q, t)));
   if (q.repeat !== "none") {
     meta.append(el("span", "chip plain", "↻ " + REPEAT_LABEL[q.repeat] + (q.count ? ` · ${q.count}×` : "")));
@@ -53,7 +57,7 @@ function section(
   { cls = "", empty = "", t }: { cls?: string; empty?: string; t: string },
 ): void {
   if (!list.length && !empty) return;
-  box.append(el("h3", cls, title));
+  box.append(el("h2", cls, title));
   if (!list.length) box.append(el("div", "empty", empty));
   for (const q of list) box.append(questRow(q, t));
 }
@@ -118,7 +122,7 @@ function renderLoot(box: HTMLElement): void {
   for (const i of S.inv) counts[i.rar] = (counts[i.rar] || 0) + 1;
   const summary =
     S.inv.length ? ` · ${counts.legendary || 0} legendary, ${counts.epic || 0} epic, ${counts.rare || 0} rare` : "";
-  box.append(el("h3", "", `Loot bag · ${S.inv.length} items${summary}`));
+  box.append(el("h2", "", `Loot bag · ${S.inv.length} items${summary}`));
   if (!S.inv.length) box.append(el("div", "empty", "Nothing yet. Complete a quest and roll the dice."));
   const grid = el("div", "inv");
   for (const it of S.inv.slice(0, 120)) {
@@ -147,7 +151,9 @@ function moodCard(t: string): HTMLElement {
 
   const row = el("div", "mood-row");
   for (const m of MOODS) {
-    const b = el("button", "mood-btn" + (last && last.v === m.v ? " on" : ""), String(m.v));
+    const current = !!last && last.v === m.v;
+    const b = el("button", "mood-btn" + (current ? " on" : ""), String(m.v));
+    b.setAttribute("aria-pressed", String(current));
     b.type = "button";
     b.setAttribute("aria-label", `${m.v} out of 10, ${m.label}`);
     b.title = m.label;
@@ -183,9 +189,13 @@ export function render(): void {
   renderHud(t);
 
   for (const b of document.querySelectorAll<HTMLElement>(".tabs button")) {
-    b.classList.toggle("on", b.dataset.view === view);
+    const on = b.dataset.view === view;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1; // roving tabindex: Tab reaches the current tab, arrows move between tabs
   }
   const box = $("#view");
+  box.setAttribute("aria-labelledby", `tab-${view}`);
   box.replaceChildren();
   if (view === "now") renderNow(box, t);
   else if (view === "upcoming") renderUpcoming(box, t);

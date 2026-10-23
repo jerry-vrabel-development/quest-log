@@ -30,11 +30,19 @@ function statsLine(): string {
   return `Level ${String(level(S.xp).l)} · ${line === "Start a streak today" ? "Today's a good day to start" : line}`;
 }
 
+/** While the opening screen covers the page, the page behind it can't take focus or clicks. */
+function setPageInert(inert: boolean): void {
+  for (const child of document.body.children) {
+    if (child instanceof HTMLElement && child.id !== "splash") child.inert = inert;
+  }
+}
+
 function showSplash(): void {
   const el = splash();
   $("#splashStats").textContent = statsLine();
   el.classList.remove("leaving");
   el.hidden = false;
+  setPageInert(true);
   el.focus();
 }
 
@@ -43,6 +51,7 @@ function begin(): void {
   if (el.hidden || el.classList.contains("leaving")) return;
   playWelcome();
   buzz("small");
+  setPageInert(false);
   if (prefersReducedMotion()) {
     el.hidden = true;
     return;

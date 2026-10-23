@@ -44,7 +44,9 @@ export function openEditor(q: Quest | null): void {
   const categories = [...new Set(S.quests.map((x) => x.g).filter(Boolean))];
   $("#cats").replaceChildren(...categories.map((c) => Object.assign(document.createElement("option"), { value: c })));
   dialog().showModal();
-  setTimeout(() => nameField(f).focus(), 50);
+  // Focus right away. (A delayed focus could yank the cursor back here if you'd already moved on,
+  // sending what you typed into the wrong field.)
+  nameField(f).focus();
 }
 
 function onClose(): void {

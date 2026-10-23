@@ -173,6 +173,37 @@ test.describe("editing a mood check-in", () => {
   });
 });
 
+test("coming back after a break is celebrated, and the ended streak is honored", async ({ page }) => {
+  // History: an 8-day run, then a 5-day run that ended 4 days ago. Nothing yesterday or today.
+  // (No state is saved until the first action, so seed a minimal one.)
+  await page.evaluate(() => {
+    const ymd = (offset: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return `${String(d.getFullYear())}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const S = JSON.parse(localStorage.getItem("quest-log-v2") ?? "{}") as { days?: string[] };
+    S.days = [
+      ...Array.from({ length: 8 }, (_, i) => ymd(-30 + i)),
+      ...Array.from({ length: 5 }, (_, i) => ymd(-8 + i)),
+    ];
+    localStorage.setItem("quest-log-v2", JSON.stringify(S));
+  });
+  await page.reload();
+  await expect(page.locator("#streak")).toHaveText("🌱 One step starts your comeback");
+
+  // Any first step back counts, a mood check-in included.
+  page.on("dialog", (d) => d.accept(""));
+  await page.getByRole("button", { name: "5 out of 10, Meh" }).click();
+  const chest = page.getByRole("dialog");
+  await expect(chest.locator(".chest-title")).toHaveText("Comeback! Welcome back.");
+  await expect(chest).toContainText("Your 5-day streak is in the record, your second-longest.");
+  await expect(chest).toContainText("Badge: 🌱 Comeback");
+  await expect(chest.locator(".chest-loot")).toBeVisible(); // comebacks always drop loot
+  await collect(page);
+  await expect(page.locator("#streak")).toHaveText("🔥 1-day streak · best 8");
+});
+
 test("adding a quest in the editor persists across reloads", async ({ page }) => {
   await page.getByRole("button", { name: "Add quest" }).click();
   await page.getByLabel("Quest", { exact: true }).fill("Plaster the ceiling");

@@ -8,6 +8,7 @@ import { initDice, openDice } from "./dice";
 import { $ } from "./dom";
 import { initEditor, openEditor } from "./editor";
 import { initChartTooltips } from "./journey";
+import { initMoodEditor } from "./moodEdit";
 import { checkReminders, initReminders } from "./reminders";
 import { isView, render, setView } from "./render";
 import { initSessionSounds } from "./session";
@@ -24,6 +25,7 @@ initSettings();
 initSync();
 initChartTooltips();
 initDice();
+initMoodEditor();
 initSessionSounds();
 
 for (const btn of document.querySelectorAll<HTMLElement>(".tabs button")) {

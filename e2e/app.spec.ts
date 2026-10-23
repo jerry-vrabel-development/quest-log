@@ -131,6 +131,48 @@ test("a low mood shows the gentle note, and the first quest after it is a hard-d
   await expect(chest.locator(".chest-loot")).toBeVisible(); // low days always drop loot
 });
 
+test.describe("editing a mood check-in", () => {
+  test.beforeEach(async ({ page }) => {
+    page.on("dialog", (d) => d.accept("slept ok"));
+    await page.getByRole("button", { name: "6 out of 10, Okay" }).click();
+    await collect(page); // Honest Check-in badge
+    await page.getByRole("tab", { name: "Journey" }).click();
+    await page.getByRole("button", { name: /Edit mood check-in at/ }).click();
+  });
+
+  test("changes the number and note everywhere, without changing XP", async ({ page }) => {
+    const editor = page.locator("#moodEdit");
+    await expect(editor.getByRole("button", { name: "6 out of 10, Okay" })).toHaveAttribute("aria-pressed", "true");
+    await expect(editor.getByLabel("Note")).toHaveValue("slept ok");
+    await editor.getByRole("button", { name: "4 out of 10, Low" }).click();
+    await editor.getByLabel("Note").fill("actually pretty rough");
+    await editor.getByRole("button", { name: "Save" }).click();
+    await expect(editor).toBeHidden();
+    await expect(page.locator(".log")).toContainText("Mood 4/10 · Low · actually pretty rough");
+    await expect(page.locator("#xp")).toHaveText("5 XP · 5/50 to next");
+    await page.getByRole("tab", { name: "Now" }).click();
+    await expect(page.locator(".mood-card .now-label")).toHaveText("4 · Low");
+  });
+
+  test("delete takes two taps and gives the day's XP back", async ({ page }) => {
+    const del = page.locator("#moodEdit").getByRole("button", { name: "Delete" });
+    await del.click();
+    await expect(del).toHaveText("Confirm delete");
+    await del.click();
+    await expect(page.locator("#moodEdit")).toBeHidden();
+    await expect(page.locator(".log")).not.toContainText("Mood");
+    await expect(page.locator("#xp")).toHaveText("0 XP · 0/50 to next");
+  });
+
+  test("cancel changes nothing", async ({ page }) => {
+    const editor = page.locator("#moodEdit");
+    await editor.getByRole("button", { name: "2 out of 10, Awful" }).click();
+    await editor.getByRole("button", { name: "Cancel" }).click();
+    await expect(editor).toBeHidden();
+    await expect(page.locator(".log")).toContainText("Mood 6/10 · Okay · slept ok");
+  });
+});
+
 test("adding a quest in the editor persists across reloads", async ({ page }) => {
   await page.getByRole("button", { name: "Add quest" }).click();
   await page.getByLabel("Quest", { exact: true }).fill("Plaster the ceiling");

@@ -8,6 +8,19 @@ Written in **TypeScript** (strict). It is an installable PWA that works offline.
 
 **Live:** https://quest-log.forwardslash.workers.dev
 
+## Design principles
+
+Quest Log is deliberate behavior design, after trainer Karen Pryor's positive-reinforcement methods. The game mechanics, loot drops included, are there on purpose: to help the person using the app build the habits _they_ chose. Every feature is checked against these eight rules.
+
+1. **Reward a behavior, not a verdict.** XP goes to specific, observable actions (finishing a quest, an honest check-in, two minutes on a tiny step), never to "having a good day." → [`rules.ts`](src/core/rules.ts) (`completeQuest`, `recordMood`, `recordFreeze`), [`dice.ts`](src/core/dice.ts)
+2. **The user sets the criterion.** You write the quests, their tiny first steps and what they're worth. Nothing outside you defines success. → [`editor.ts`](src/client/editor.ts), [`quests.ts`](src/core/quests.ts) (input validation)
+3. **Clear and immediate.** A marker click lands the instant you act, before any work happens, and the reward follows about 150 ms later. → [`actions.ts`](src/client/actions.ts) (`mark`), [`celebration.ts`](src/client/celebration.ts) (`REWARD_DELAY_MS`)
+4. **Predictable while learning, variable once learned.** A repeating quest's first 5 completions always drop loot; after that, drops follow a variable-ratio schedule with a pity timer. → [`celebrate.ts`](src/core/celebrate.ts) (`HABIT_WARMUP`, `guaranteedDrop`), [`rules.ts`](src/core/rules.ts) (`rollLoot`)
+5. **Bigger on hard days.** When your latest mood is 4 or under, every quest drops loot and the first one is a jackpot. → [`celebrate.ts`](src/core/celebrate.ts) (`isLowDay`)
+6. **Never punishing.** Nothing is taken away. Streaks count gently, missed repeats roll forward instead of piling up, overdue quests come with "no guilt," and coming back after a break is its own celebrated moment. → [`streaks.ts`](src/core/streaks.ts), [`quests.ts`](src/core/quests.ts) (`rollMissed`), [`rules.ts`](src/core/rules.ts) (`streak`)
+7. **Honesty over happiness.** A mood check-in pays the same XP whether you log a 3 or an 8, because the behavior being rewarded is the honest answer. → [`rules.ts`](src/core/rules.ts) (`MOOD_XP`)
+8. **No money inside the reward loop.** Loot can't be bought, streaks can't be paid for, and there are no ads. Variable rewards are only ever pointed at the user's own goals. → by design: there is no payment code in the app.
+
 ## Architecture
 
 ```mermaid
@@ -40,7 +53,7 @@ flowchart LR
 
 **Time-zone-safe dates.** Dates are `YYYY-MM-DD` strings in the user's calendar, and the math runs on UTC `Date`s. The phone, the Worker and CI therefore agree no matter where each one runs. The test suite runs under several machine time zones to prove it.
 
-**Rewards follow Karen Pryor's training principles** (`src/core/celebrate.ts`). A marker click and a tiny buzz land the instant a quest is checked, before any work happens, and the payoff follows about 150 ms later, so the click itself becomes rewarding. New habits get continuous reinforcement: a repeating quest's first 5 completions always drop loot, then it moves to the variable schedule. Hard days pay more: when the latest mood is 4 or under, every quest drops loot, and the first one is a jackpot. Jackpots stay rare and are saved for breakthroughs (level-ups, badges, epic loot, 30+ XP quests, every 5th quest in a day, streak milestones). Nothing is ever taken away: when a streak ends, the first step back is a **comeback**, which always drops loot, honors the run that ended ("Your 12-day streak is in the record, your second-longest"), and earns the Comeback badge. The HUD shows the longest run next to the current one. They open a full-screen loot chest with a drum roll, fanfare and confetti. Sounds are synthesized with Web Audio, can be turned off in Settings, and animations respect `prefers-reduced-motion`.
+**Rewards follow Karen Pryor's training principles** (`src/core/celebrate.ts`). A marker click and a tiny buzz land the instant a quest is checked, before any work happens, and the payoff follows about 150 ms later, so the click itself becomes rewarding. New habits get continuous reinforcement: a repeating quest's first 5 completions always drop loot, then it moves to the variable schedule. Hard days pay more: when the latest mood is 4 or under, every quest drops loot, and the first one is a jackpot. Jackpots stay rare and are saved for breakthroughs (level-ups, badges, epic loot, 30+ XP quests, every 5th quest in a day, streak milestones). They open a full-screen loot chest with a drum roll, fanfare and confetti. Nothing is ever taken away: when a streak ends, the first step back is a **comeback**, which always drops loot, honors the run that ended ("Your 12-day streak is in the record, your second-longest"), and earns the Comeback badge. The HUD shows the longest run next to the current one. Sounds are synthesized with Web Audio, can be turned off in Settings, and animations respect `prefers-reduced-motion`.
 
 **Frozen? Roll the dice** (`src/core/dice.ts`, `src/client/dice.ts`). When you can't start anything, the Frozen button tosses a 3D die (pure CSS) that clacks as it bounces and lands on one tiny step from a quest that's due, or on a built-in step like "Drink a glass of water" when none are. You can roll again, or tap "Do it" to start a two-minute timer. Finishing pays 5 XP, and the Journey log records which tiny step broke the freeze. That's shaping: the smallest possible step gets rewarded.
 

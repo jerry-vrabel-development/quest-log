@@ -4,6 +4,7 @@ import { moodLabel } from "../core/rules";
 import { BADGES, computeStats, moodByDay, type Stats } from "../core/stats";
 import type { LogEvent } from "../core/types";
 import { el, fmtClock, fmtDay, fmtWeekdayNarrow } from "./dom";
+import { openMoodEditor } from "./moodEdit";
 import { S } from "./store";
 
 const CHART_DAYS = 14;
@@ -169,6 +170,15 @@ function activityLog(box: HTMLElement, t: string): void {
     const li = el("li");
     li.append(el("span", "lt", fmtClock(e.at)), el("span", "lx", describeEvent(e)));
     if (e.xp) li.append(el("span", "xp", "+" + e.xp));
+    if (e.t === "mood") {
+      const edit = el("button", "log-edit", "✎");
+      edit.type = "button";
+      edit.setAttribute("aria-label", `Edit mood check-in at ${fmtClock(e.at)}`);
+      edit.onclick = () => {
+        openMoodEditor(e.at);
+      };
+      li.append(edit);
+    }
     ul.append(li);
   }
   box.append(ul);

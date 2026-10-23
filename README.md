@@ -58,6 +58,7 @@ src/
     rules.ts                XP curve, streaks, loot roll, completing quests, moods
     celebrate.ts            Karen Pryor reward rules: how big each moment is (small, good, jackpot)
     dice.ts                 the Frozen? dice: which tiny steps to offer, rolls that never repeat
+    moods.ts                editing and deleting mood check-ins, keeping XP honest
     stats.ts                derived stats and badges
     quests.ts               views, sorting, roll-forward of missed repeats, input validation
     reminders.ts            when a reminder fires (used by app and cron)
@@ -70,6 +71,7 @@ src/
     sound.ts                marker click and reward sounds, synthesized with Web Audio
     dice.ts                 the Frozen? dice: a 3D CSS die, bounce clacks, the two-minute timer
     session.ts              opening screen; welcome and farewell chimes
+    moodEdit.ts             fix or delete a mood check-in from the activity log
     render.ts, journey.ts, editor.ts, settings.ts, reminders.ts, sync.ts, ...
     sw.ts                   service worker → public/sw.js (cache name = content hash of the build)
   worker/                   the Cloudflare Worker
@@ -91,13 +93,13 @@ There are four TypeScript programs, because the code runs in different global sc
 
 ## Testing and quality
 
-| Command                                                       | What it does                                                                                                                                                                                                                                   |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`                                                    | 149 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter                                                                                    |
-| `npm run test:e2e`                                            | 34 Playwright tests on Desktop Chrome and Pixel 7: first run, completing quests, the jackpot chest, marker-before-reward sound order, sound settings, reduced motion, mood check-ins, the editor, Journey, the Frozen dice, the opening screen |
-| `npm run test:coverage`                                       | about 95% line coverage of `core/` and `src/`                                                                                                                                                                                                  |
-| `npm run lint` · `npm run format:check` · `npm run typecheck` | Type-aware ESLint (`strictTypeChecked`), Prettier, and `tsc` over all four programs                                                                                                                                                            |
-| `npm run check`                                               | all of the above except e2e                                                                                                                                                                                                                    |
+| Command                                                       | What it does                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`                                                    | 162 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter                                                                                                                 |
+| `npm run test:e2e`                                            | 40 Playwright tests on Desktop Chrome and Pixel 7: first run, completing quests, the jackpot chest, marker-before-reward sound order, sound settings, reduced motion, mood check-ins and editing or deleting them, the editor, Journey, the Frozen dice, the opening screen |
+| `npm run test:coverage`                                       | about 95% line coverage of `core/` and `src/`                                                                                                                                                                                                                               |
+| `npm run lint` · `npm run format:check` · `npm run typecheck` | Type-aware ESLint (`strictTypeChecked`), Prettier, and `tsc` over all four programs                                                                                                                                                                                         |
+| `npm run check`                                               | all of the above except e2e                                                                                                                                                                                                                                                 |
 
 Highlights:
 

@@ -384,6 +384,7 @@ dialog label {
   min-width: 0;
 }
 dialog input:not([type="file"]),
+dialog textarea,
 dialog select,
 .set-row select {
   padding: 10px;
@@ -836,6 +837,38 @@ legend {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.log .log-edit {
+  flex: none;
+  border: 0;
+  background: none;
+  padding: 0 4px;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.log .log-edit:hover,
+.log .log-edit:focus-visible {
+  color: var(--accent);
+}
+#moodEdit textarea {
+  resize: vertical;
+}
+#moodEdit .ed-actions {
+  flex-wrap: nowrap;
+}
+#moodEdit .ed-actions .btn {
+  flex: 1;
+  white-space: nowrap;
+  padding-inline: 8px;
+}
+#moodEdit .ed-actions .spacer {
+  display: none;
+}
+#moodEditDelete.armed {
+  background: var(--warn);
+  border-color: var(--warn);
+  color: var(--bg);
 }
 .log .xp {
   font-family: "JetBrains Mono", monospace;

@@ -153,6 +153,22 @@
       <form method="dialog"><button class="dice-close" aria-label="Close">×</button></form>
     </dialog>
 
+    <!-- Edit a mood check-in -->
+    <dialog id="moodEdit" aria-labelledby="moodEditTitle">
+      <form method="dialog">
+        <h2 id="moodEditTitle">Edit check-in</h2>
+        <p class="hint" id="moodEditWhen"></p>
+        <div class="mood-row" id="moodEditRow" role="group" aria-label="Mood"></div>
+        <label>Note<textarea id="moodEditNote" rows="3" placeholder="Anything you want to remember"></textarea></label>
+        <div class="ed-actions">
+          <button type="button" class="btn ghost danger" id="moodEditDelete">Delete</button>
+          <span class="spacer"></span>
+          <button value="cancel" class="btn ghost">Cancel</button>
+          <button type="button" class="btn" id="moodEditSave">Save</button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- Settings -->
     <dialog id="settings">
       <form method="dialog">

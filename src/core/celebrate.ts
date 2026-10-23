@@ -6,9 +6,11 @@
  *  - New behaviors get continuous reinforcement: a repeating quest's first completions always drop loot.
  *  - Hard moments pay more: on a low-mood day every quest drops loot, and the first one is a jackpot.
  *  - Jackpots are rare and big, saved for breakthroughs: level-ups, badges, epic loot, big quests,
- *    big days and streak milestones.
+ *    big days, streak milestones, and comebacks.
+ *  - Never punishing: coming back after a break always pays, and the streak that ended is honored.
  */
 import { MOOD_LOW } from "./rules";
+import { honorEndedRun, type Comeback } from "./streaks";
 import type { LootItem, Mood } from "./types";
 
 export type Tier = "small" | "good" | "jackpot";
@@ -36,6 +38,8 @@ export interface Moment {
   questsToday: number;
   /** Today's latest mood is at or under MOOD_LOW. */
   lowDay: boolean;
+  /** Set when this is the first rewarded action after one or more days off. */
+  comeback?: Comeback | null;
 }
 
 export interface Celebration {
@@ -51,14 +55,27 @@ export function isLowDay(moods: Mood[], today: string): boolean {
 }
 
 /** Whether this completion is guaranteed to drop loot (continuous reinforcement). */
-export function guaranteedDrop({ repeatCount, lowDay }: { repeatCount: number; lowDay: boolean }): boolean {
-  return lowDay || (repeatCount > 0 && repeatCount <= HABIT_WARMUP);
+export function guaranteedDrop({
+  repeatCount,
+  lowDay,
+  comeback = false,
+}: {
+  repeatCount: number;
+  lowDay: boolean;
+  comeback?: boolean;
+}): boolean {
+  return comeback || lowDay || (repeatCount > 0 && repeatCount <= HABIT_WARMUP);
 }
 
 const crossed = (before: number, after: number) => STREAK_MILESTONES.find((m) => before < m && after >= m);
 
 export function celebrationFor(m: Moment): Celebration {
   const reasons: string[] = [];
+  if (m.comeback) {
+    reasons.push("Comeback! Welcome back.");
+    const honor = honorEndedRun(m.comeback);
+    if (honor) reasons.push(honor);
+  }
   if (m.levelAfter > m.levelBefore) reasons.push(`Level ${m.levelAfter}!`);
   if (m.item?.rar === "legendary") reasons.push("Legendary drop!");
   else if (m.item?.rar === "epic") reasons.push("Epic drop!");

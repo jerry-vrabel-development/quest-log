@@ -1,5 +1,6 @@
 /** Stats derived from the activity log, and the badges they unlock. */
 import { MOOD_LOW, bestStreak, level, logEvent, streak } from "./rules";
+import { countComebacks } from "./streaks";
 import type { Mood, State, When } from "./types";
 
 export interface Stats {
@@ -12,6 +13,8 @@ export interface Stats {
   xpByDay: Record<string, number>;
   countByDay: Record<string, number>;
   bestStreak: number;
+  /** Times activity resumed after a break. */
+  comebacks: number;
   loot: number;
   legendary: number;
   level: number;
@@ -35,6 +38,7 @@ export const BADGES: readonly Badge[] = [
   ["ten-down", "🔟", "Ten Down", "Complete 10 quests", (s) => s.quests >= 10],
   ["bash-bff", "🐕", "Bash's Best Friend", "Complete 10 Bash quests", (s) => (s.byCat["Bash"] || 0) >= 10],
   ["streak-3", "🔥", "Kindling", "3-day streak", (s) => s.bestStreak >= 3],
+  ["comeback", "🌱", "Comeback", "Come back after a break", (s) => s.comebacks >= 1],
   ["mood-week", "📓", "Self-Aware", "Log your mood on 7 different days", (s) => s.moodDays >= 7],
   ["streak-7", "🔥", "Campfire", "7-day streak", (s) => s.bestStreak >= 7],
   ["career-10", "💼", "Career Climber", "Complete 10 Career quests", (s) => (s.byCat["Career"] || 0) >= 10],
@@ -78,6 +82,7 @@ export function computeStats(S: State, today: string): Stats {
     xpByDay,
     countByDay,
     bestStreak: Math.max(bestStreak(S.days), streak(S.days, today)),
+    comebacks: countComebacks(S.days),
     loot: S.inv.length,
     legendary: S.inv.filter((i) => i.rar === "legendary").length,
     level: level(S.xp).l,

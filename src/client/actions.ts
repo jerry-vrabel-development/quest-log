@@ -7,6 +7,7 @@
 import { celebrationFor, guaranteedDrop, isLowDay, type Moment } from "../core/celebrate";
 import { completeQuest, level, recordFreeze, recordMood, rollLoot, streak, uncompleteQuest } from "../core/rules";
 import { checkBadges, type EarnedBadge } from "../core/stats";
+import { comebackFor, type Comeback } from "../core/streaks";
 import type { Quest } from "../core/types";
 import { celebrate } from "./celebration";
 import { render } from "./render";
@@ -25,8 +26,14 @@ function mark(): void {
 interface Before {
   level: number;
   streak: number;
+  /** Taken before the rule marks today active, so a comeback can be detected. */
+  comeback: Comeback | null;
 }
-const snapshot = (): Before => ({ level: level(S.xp).l, streak: streak(S.days, today()) });
+const snapshot = (): Before => ({
+  level: level(S.xp).l,
+  streak: streak(S.days, today()),
+  comeback: comebackFor(S.days, today()),
+});
 const questsToday = () => S.log.filter((e) => e.t === "quest" && e.day === today()).length;
 
 /** Steps 2 and 3: roll loot, check badges, save, render, and celebrate. */
@@ -36,7 +43,9 @@ function reward(
 ): void {
   const t = today();
   const lowDay = isLowDay(S.moods, t);
-  const item = xp > 0 ? rollLoot(S, Math.random, Date.now(), guaranteedDrop({ repeatCount, lowDay })) : null;
+  const comeback = xp > 0 ? before.comeback : null;
+  const item =
+    xp > 0 ? rollLoot(S, Math.random, Date.now(), guaranteedDrop({ repeatCount, lowDay, comeback: !!comeback })) : null;
   const badges = checkBadges(S, when());
   save();
   render();
@@ -54,6 +63,7 @@ function reward(
     streakAfter: streak(S.days, t),
     questsToday: questsToday(),
     lowDay,
+    comeback,
   });
 
   const toasts: ToastItem[] = [];

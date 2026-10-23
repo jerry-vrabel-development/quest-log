@@ -1,7 +1,8 @@
 /** Renders the HUD and the current tab. */
 import { daysBetween } from "../core/dates";
 import { byCategory, nowView, rollMissed, upcoming } from "../core/quests";
-import { MOODS, MOOD_LOW, MOOD_XP, level, moodLabel, streak } from "../core/rules";
+import { MOODS, MOOD_LOW, MOOD_XP, bestStreak, level, moodLabel, streak } from "../core/rules";
+import { comebackFor } from "../core/streaks";
 import type { Quest } from "../core/types";
 import { logMood, setQuestDone } from "./actions";
 import { $, el, fmtClock, fmtDue, REPEAT_LABEL } from "./dom";
@@ -57,13 +58,21 @@ function section(
   for (const q of list) box.append(questRow(q, t));
 }
 
+/** Current streak with the longest run beside it; on a comeback day, an invitation instead of a zero. */
+export function streakLine(t: string): string {
+  const st = streak(S.days, t);
+  const best = Math.max(bestStreak(S.days), st);
+  if (st) return `🔥 ${String(st)}-day streak${best > st ? ` · best ${String(best)}` : ""}`;
+  if (comebackFor(S.days, t)) return "🌱 One step starts your comeback";
+  return "Start a streak today";
+}
+
 function renderHud(t: string): void {
   const lv = level(S.xp);
   $("#lvl").textContent = "Level " + lv.l;
   $("#xp").textContent = `${S.xp} XP · ${lv.into}/${lv.need} to next`;
   $("#bar").style.width = (lv.into / lv.need) * 100 + "%";
-  const st = streak(S.days, t);
-  $("#streak").textContent = st ? `🔥 ${st}-day streak` : "Start a streak today";
+  $("#streak").textContent = streakLine(t);
   $("#today-count").textContent = S.days.includes(t) ? "You moved today ✓" : "";
 }
 

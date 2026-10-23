@@ -6,9 +6,10 @@
  * on a fresh open and after 30+ minutes away. With the welcome screen off, the chime plays on the
  * first tap instead. Closing: a soft farewell chime (best effort; some phones cut audio on exit).
  */
-import { level, streak } from "../core/rules";
+import { level } from "../core/rules";
 import { prefersReducedMotion } from "./confetti";
 import { $ } from "./dom";
+import { streakLine } from "./render";
 import { buzz, playFarewell, playWelcome } from "./sound";
 import { S, prefs, today } from "./store";
 
@@ -25,8 +26,8 @@ const splash = () => $("#splash");
 let welcomeArmed = false;
 
 function statsLine(): string {
-  const st = streak(S.days, today());
-  return `Level ${level(S.xp).l} · ${st ? `🔥 ${st}-day streak` : "Today's a good day to start"}`;
+  const line = streakLine(today());
+  return `Level ${String(level(S.xp).l)} · ${line === "Start a streak today" ? "Today's a good day to start" : line}`;
 }
 
 function showSplash(): void {

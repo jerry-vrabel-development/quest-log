@@ -4,7 +4,7 @@ import { $ } from "./dom";
 
 export type ToastItem = [kind: string, title: string, desc: string];
 
-const BIG = new Set(["legendary", "epic", "badge"]);
+const BIG = new Set(["legendary", "epic", "badge", "memory"]);
 const colorFor = (kind: string) =>
   kind === "legendary" ? "legend"
   : kind === "badge" ? "epic"
@@ -16,7 +16,7 @@ let hideTimer: ReturnType<typeof setTimeout> | undefined;
 /** Shows one toast right away. */
 export function toast(kind: string, title: string, desc: string): void {
   const label = $("#trar");
-  label.textContent = kind;
+  label.textContent = kind === "memory" ? "from your record" : kind;
   label.style.color = `var(--${colorFor(kind)})`;
   $("#tttl").textContent = title;
   $("#td").textContent = desc;

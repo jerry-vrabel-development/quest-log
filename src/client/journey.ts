@@ -3,9 +3,11 @@ import { addDays } from "../core/dates";
 import { moodLabel } from "../core/rules";
 import { BADGES, computeStats, moodByDay, type Stats } from "../core/stats";
 import type { LogEvent } from "../core/types";
+import { addNote, deleteNote, NOTE_MAX } from "../core/memories";
 import { el, fmtClock, fmtDay, fmtWeekdayNarrow } from "./dom";
 import { openMoodEditor } from "./moodEdit";
-import { S } from "./store";
+import { render } from "./render";
+import { S, save, when } from "./store";
 
 const CHART_DAYS = 14;
 
@@ -184,6 +186,46 @@ function activityLog(box: HTMLElement, t: string): void {
   box.append(ul);
 }
 
+/** Write to a future hard day. Notes come back as memory drops, most often on low days. */
+function notesFromPastYou(box: HTMLElement): void {
+  box.append(el("h2", "", "Notes from past you"));
+  const form = el("form", "note-form");
+  const label = el("label", "", "Write one on a good day. It comes back when you need it.");
+  const text = el("textarea");
+  text.id = "pastNote";
+  text.rows = 2;
+  text.maxLength = NOTE_MAX;
+  text.placeholder = "You've come back before. You will again.";
+  label.htmlFor = "pastNote";
+  const btn = el("button", "btn small", "Save note");
+  btn.type = "submit";
+  form.append(label, text, btn);
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    if (!addNote(S, text.value, when())) return;
+    save();
+    render();
+  };
+  box.append(form);
+  const notes = S.notes ?? [];
+  if (!notes.length) return;
+  const ul = el("ul", "notes");
+  for (const n of notes) {
+    const li = el("li");
+    const del = el("button", "note-del", "×");
+    del.type = "button";
+    del.setAttribute("aria-label", `Delete note from ${fmtDay(n.day)}`);
+    del.onclick = () => {
+      deleteNote(S, n.at);
+      save();
+      render();
+    };
+    li.append(el("span", "note-day", fmtDay(n.day)), el("span", "note-text", n.text), del);
+    ul.append(li);
+  }
+  box.append(ul);
+}
+
 export function renderJourney(box: HTMLElement, t: string): void {
   const st = computeStats(S, t);
   const days = Array.from({ length: CHART_DAYS }, (_, i) => addDays(t, i - (CHART_DAYS - 1)));
@@ -191,6 +233,7 @@ export function renderJourney(box: HTMLElement, t: string): void {
   xpChart(box, st, days, t);
   moodChart(box, st, days, t);
   badges(box);
+  notesFromPastYou(box);
   hallOfFame(box, st, t);
   categories(box, st);
   activityLog(box, t);

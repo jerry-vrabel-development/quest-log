@@ -49,6 +49,8 @@ async function ageMoments(page: Page) {
     localStorage.setItem("quest-log-v2", JSON.stringify(S));
   });
   await page.reload();
+  // Saved files are listed in the background after a load; until then a reward can't pick them.
+  await expect(page.locator("html")).toHaveAttribute("data-media", "ready");
 }
 
 test("a photo moment is saved on the device and shows in Journey", async ({ page }) => {

@@ -31,7 +31,11 @@ initMoodEditor();
 initMoments();
 initSessionSounds();
 // Moment files (photos, audio) live in IndexedDB; once we know which are on this device, refresh the view.
-void loadMediaIndex().then(render);
+// Saved files are listed in the background; mark the page when that's done (tests wait on it).
+void loadMediaIndex().then(() => {
+  document.documentElement.dataset.media = "ready";
+  render();
+});
 
 // The progress panel is sticky; scroll focused items to just below it, never underneath.
 const hud = $(".hud");

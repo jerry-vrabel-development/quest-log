@@ -53,12 +53,18 @@ async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
 /** Ids of moments whose file is on this device. */
 const local = new Set<string>();
 
-export async function loadMediaIndex(): Promise<void> {
-  try {
-    for (const k of await run("readonly", (s) => s.getAllKeys())) if (typeof k === "string") local.add(k);
-  } catch {
-    /* no IndexedDB (private mode): files just aren't available */
-  }
+let indexLoaded: Promise<void> | undefined;
+
+/** Lists the files on this device (once; later calls wait for the same listing). */
+export function loadMediaIndex(): Promise<void> {
+  indexLoaded ??= (async () => {
+    try {
+      for (const k of await run("readonly", (s) => s.getAllKeys())) if (typeof k === "string") local.add(k);
+    } catch {
+      /* no IndexedDB (private mode): files just aren't available */
+    }
+  })();
+  return indexLoaded;
 }
 
 export const hasLocalMedia = (id: string): boolean => local.has(id);

@@ -3,13 +3,20 @@ import type { State } from "../../src/core/types";
 import { MAX_STATE_BYTES, handleApi, type ApiEnv } from "../../src/worker/api";
 import type { PushSender } from "../../src/worker/push";
 import { createD1, type TestD1 } from "../helpers/d1";
+import { createR2 } from "../helpers/r2";
 import { CODE, OTHER_CODE, emptyState, quest } from "../helpers/fixtures";
 import { body as read } from "../helpers/http";
 
 let env: ApiEnv & { DB: TestD1 };
 let push: Mock<PushSender>;
 beforeEach(() => {
-  env = { DB: createD1(), VAPID_PUBLIC_KEY: "test-public-key", VAPID_PRIVATE_JWK: "{}", VAPID_SUBJECT: "mailto:t@x" };
+  env = {
+    DB: createD1(),
+    MEDIA: createR2(),
+    VAPID_PUBLIC_KEY: "test-public-key",
+    VAPID_PRIVATE_JWK: "{}",
+    VAPID_SUBJECT: "mailto:t@x",
+  };
   push = vi.fn<PushSender>(async () => 1);
 });
 

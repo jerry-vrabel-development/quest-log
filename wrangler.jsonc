@@ -28,6 +28,13 @@
     "VAPID_PUBLIC_KEY": "BBHjrikzs2-jaIDh0kT1KldzkezFXpnU2EEbz2kN5iaQb_yLd2vk6-Bv1kQ1WTBVErdRvjSzeCNr7ZnZGuAFeB4",
     "VAPID_SUBJECT": "mailto:hire.jerry.vrabel@gmail.com",
   },
+  // Moment files (photos, videos, music, recordings), encrypted on the device before upload.
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "quest-log-media",
+    },
+  ],
   "kv_namespaces": [
     {
       "binding": "OAUTH_KV",

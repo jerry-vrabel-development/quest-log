@@ -203,7 +203,7 @@ describe("video moments", () => {
     expect(canShow(v, () => true)).toBe(true);
   });
 
-  it("holds clips up to a minute and 100 MB", () => {
+  it("holds clips up to a minute and 95 MB", () => {
     const MB = 1024 * 1024;
     expect(videoProblem(20 * MB, 45)).toBeNull();
     expect(videoProblem(20 * MB, VIDEO_MAX_SECONDS)).toBeNull();
@@ -211,7 +211,7 @@ describe("video moments", () => {
     expect(videoProblem(20 * MB, 95)).toBe(
       "That video is 95 seconds. Moments hold up to a minute: trim it first, or pick a shorter one.",
     );
-    expect(videoProblem(VIDEO_MAX_BYTES + 1, 10)).toBe("That video is over 100 MB. Try a shorter clip.");
+    expect(videoProblem(VIDEO_MAX_BYTES + 1, 10)).toBe("That video is over 95 MB. Try a shorter clip.");
     expect(videoProblem(MB, Number.NaN)).toBe("Couldn't play that video. Try another one.");
   });
 });

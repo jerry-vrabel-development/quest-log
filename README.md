@@ -57,7 +57,9 @@ flowchart LR
 
 **Memory drops: rewards made from your own record** (`src/core/memories.ts`). A reinforcer only works if the learner actually wants it, and nothing is more personal than your own past. So reward moments can also bring back a memory, chosen for the moment: on a hard day, how you got through before (notes from past you, comebacks, hard days you still moved on); after a quest, earlier wins in the same area; at a jackpot, one of your best days; and on an anniversary, whatever happened on this date. Hard days and jackpots always bring one; other moments sometimes do. Memories only lift: a low day comes back only as something you got through, and recent memories don't repeat. In the Journey tab you can write **notes from past you** on good days; they come back when you need them.
 
-**Moments: capture when it's good, replay when it's not** (`src/core/moments.ts`, `src/client/moments.ts`, `src/client/media.ts`). Save a photo, a short video (up to a minute; on a phone you can shoot it right there), the song you were listening to (with its local music file attached, if you like), a quick recording made right in the app, or the movie you watched, with a caption, from Journey or from the "Save this moment?" invite that appears after a 7+ check-in, a jackpot or a comeback. Photos are resized on the device and kept in IndexedDB with videos (up to 60 seconds and 100 MB, played inline), music files (up to 25 MB) and recordings (up to 2 minutes, Opus or AAC via MediaRecorder); players never autoplay; links must be http(s) and show where they're from (Spotify, YouTube, IMDb, …). Moments are the strongest memory drop: whenever one fits the moment, it wins. In a jackpot it appears inside the chest; otherwise it opens full screen. (Next: cloud backup to R2, so files follow you to other devices.)
+**Moments: capture when it's good, replay when it's not** (`src/core/moments.ts`, `src/client/moments.ts`, `src/client/media.ts`). Save a photo, a short video (up to a minute; on a phone you can shoot it right there), the song you were listening to (with its local music file attached, if you like), a quick recording made right in the app, or the movie you watched, with a caption, from Journey or from the "Save this moment?" invite that appears after a 7+ check-in, a jackpot or a comeback. Photos are resized on the device and kept in IndexedDB with videos (up to 60 seconds and 95 MB, played inline), music files (up to 25 MB) and recordings (up to 2 minutes, Opus or AAC via MediaRecorder); players never autoplay; links must be http(s) and show where they're from (Spotify, YouTube, IMDb, …). Moments are the strongest memory drop: whenever one fits the moment, it wins. In a jackpot it appears inside the chest; otherwise it opens full screen.
+
+**Encrypted cloud backup for moments** (`src/core/vault.ts`, `src/client/backup.ts`, `src/worker/media.ts`). With sync on, every moment file follows you to your other devices through Cloudflare R2, and it's encrypted on the device first. The key is derived from the sync code with HKDF-SHA-256 and never leaves the device; the server knows the account only by the code's SHA-256 hash. Each file is sealed with AES-256-GCM, with its MIME type inside the ciphertext and the moment id bound in as additional data, so the server can't read a file, tell what kind it is, or move it onto another moment without that being detected. Each account gets 2 GB (the free R2 tier is 10 GB). Deleting a moment deletes its file from the cloud, and files no moment uses any more are cleaned up after a day. Without sync, nothing leaves the device.
 
 **Frozen? Roll the dice** (`src/core/dice.ts`, `src/client/dice.ts`). When you can't start anything, the Frozen button tosses a 3D die (pure CSS) that clacks as it bounces and lands on one tiny step from a quest that's due, or on a built-in step like "Drink a glass of water" when none are. You can roll again, or tap "Do it" to start a two-minute timer. Finishing pays 5 XP, and the Journey log records which tiny step broke the freeze. That's shaping: the smallest possible step gets rewarded.
 
@@ -79,6 +81,7 @@ src/
     moods.ts                editing and deleting mood check-ins, keeping XP honest
     memories.ts             memory drops: candidates from the record, chosen for the moment
     moments.ts              moments (photo, video, song, recording, movie): validation, links, how they're described
+    vault.ts                end-to-end encryption for backed-up moment files (HKDF + AES-256-GCM)
     stats.ts                derived stats and badges
     quests.ts               views, sorting, roll-forward of missed repeats, input validation
     reminders.ts            when a reminder fires (used by app and cron)
@@ -92,12 +95,14 @@ src/
     dice.ts                 the Frozen? dice: a 3D CSS die, bounce clacks, the two-minute timer
     session.ts              opening screen; welcome and farewell chimes
     moments.ts, media.ts    saving moments, files in IndexedDB, the Journey gallery and replay
+    backup.ts               encrypted backup and restore of moment files when sync is on
     moodEdit.ts             fix or delete a mood check-in from the activity log
     render.ts, journey.ts, editor.ts, settings.ts, reminders.ts, sync.ts, ...
     sw.ts                   service worker → public/sw.js (cache name = content hash of the build)
   worker/                   the Cloudflare Worker
     worker.ts               entry: OAuth provider in front of /mcp, cron handler
     api.ts                  /api/* routes (sync, push subscriptions, outbox)
+    media.ts                /api/media: encrypted moment files in R2, per-account quota
     authorize.ts            OAuth consent page (proves ownership with the sync code)
     mcp/server.ts           MCP over Streamable HTTP, stateless JSON-RPC 2.0
     mcp/tools.ts            tool schemas and implementations
@@ -127,8 +132,8 @@ Still checked by hand: a VoiceOver pass on iPhone, 200% zoom, and text alternati
 
 | Command                                                       | What it does                                                                                                                                                                                                                                                                                                                                                             |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm test`                                                    | 212 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter                                                                                                                                                                                                              |
-| `npm run test:e2e`                                            | 100 Playwright tests on Desktop Chrome and Pixel 7, including an axe-core accessibility scan of every view and dialog: first run, completing quests, the jackpot chest, marker-before-reward sound order, sound settings, reduced motion, mood check-ins and editing or deleting them, comebacks after a break, the editor, Journey, the Frozen dice, the opening screen |
+| `npm test`                                                    | 233 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter                                                                                                                                                                                                              |
+| `npm run test:e2e`                                            | 108 Playwright tests on Desktop Chrome and Pixel 7, including an axe-core accessibility scan of every view and dialog: first run, completing quests, the jackpot chest, marker-before-reward sound order, sound settings, reduced motion, mood check-ins and editing or deleting them, comebacks after a break, the editor, Journey, the Frozen dice, the opening screen |
 | `npm run test:coverage`                                       | about 95% line coverage of `core/` and `src/`                                                                                                                                                                                                                                                                                                                            |
 | `npm run lint` · `npm run format:check` · `npm run typecheck` | Type-aware ESLint (`strictTypeChecked`), Prettier, and `tsc` over all four programs                                                                                                                                                                                                                                                                                      |
 | `npm run check`                                               | all of the above except e2e                                                                                                                                                                                                                                                                                                                                              |
@@ -183,6 +188,7 @@ npx wrangler login
 npx wrangler d1 create quest-log            # put the database_id in wrangler.jsonc
 npm run db:init
 npx wrangler kv namespace create OAUTH_KV   # put the id in wrangler.jsonc
+npx wrangler r2 bucket create quest-log-media  # enable R2 in the dashboard first (free tier: 10 GB)
 npm run vapid                               # public key → wrangler.jsonc vars.VAPID_PUBLIC_KEY
 npx wrangler secret put VAPID_PRIVATE_JWK   # paste the private key JSON
 npm run deploy

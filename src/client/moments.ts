@@ -19,7 +19,7 @@ import {
   videoTooBig,
 } from "../core/moments";
 import type { Moment, MomentKind } from "../core/types";
-import { $, el, fmtDay } from "./dom";
+import { $, el, fmtDay, isCancel } from "./dom";
 import { backupSoon, removeBackup } from "./backup";
 import {
   deleteMedia,
@@ -174,6 +174,10 @@ export function openMomentDialog({ invite = false }: { invite?: boolean } = {}):
 
 async function onSubmit(e: SubmitEvent): Promise<void> {
   e.preventDefault();
+  if (isCancel(e)) {
+    dialog().close();
+    return;
+  }
   const err = $("#momentError");
   const kind = kindNow();
   if (recorder) {

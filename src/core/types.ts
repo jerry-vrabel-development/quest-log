@@ -1,4 +1,5 @@
 // Shared data shapes for the app, the MCP server and the reminder cron.
+import type { Extras } from "./checkin";
 
 export const REPEATS = ["none", "daily", "weekdays", "weekly", "monthly"] as const;
 export type Repeat = (typeof REPEATS)[number];
@@ -36,7 +37,10 @@ export interface LootItem {
   at: number;
 }
 
-export interface Mood {
+/** A check-in: mood, plus optional extras (anxiety, energy, body, focus, sleep, pain). */
+export interface Mood extends Extras {
+  /** A picture or GIF with the check-in, stored on the device under this id (like moment files). */
+  media?: string;
   at: number;
   day: string;
   /** 1-10. */
@@ -49,7 +53,17 @@ export interface Mood {
 
 export type LogEvent =
   | { t: "quest"; at: number; day: string; id: number; name: string; g: string; xp: number; via?: string }
-  | { t: "mood"; at: number; day: string; v: number; s: number; note: string; xp: number; via?: string }
+  | ({
+      t: "mood";
+      at: number;
+      day: string;
+      v: number;
+      s: number;
+      note: string;
+      xp: number;
+      via?: string;
+      media?: string;
+    } & Extras)
   | { t: "freeze"; at: number; day: string; xp: number; step?: string }
   | { t: "badge"; at: number; day: string; name: string; xp?: undefined };
 

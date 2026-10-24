@@ -1,5 +1,6 @@
 // MCP tool definitions and implementations. Game rules come from the shared core, so a quest
 // completed through Claude earns exactly what it would in the app.
+import { cleanExtras, describeExtras } from "../../core/checkin";
 import { addDays, localYmd } from "../../core/dates";
 import {
   REMIND_OPTIONS,
@@ -106,10 +107,34 @@ export const TOOLS = [
     name: "log_mood",
     title: "Log mood",
     description:
-      "Record a mood check-in on the 1-10 scale, with an optional short note. Only log a number the user actually gave.",
+      "Record a check-in: mood on the 1-10 scale, with an optional note. Optional extras, each 1-5: anxiety (1 calm … 5 very high), energy (1 empty … 5 full), body (1 rough … 5 strong), focus (1 scattered … 5 locked in); and short notes on sleep and pain. Only log what the user actually said; never guess a number.",
     inputSchema: {
       type: "object",
-      properties: { value: { type: "integer", minimum: 1, maximum: 10 }, note: { type: "string", maxLength: 280 } },
+      properties: {
+        value: { type: "integer", minimum: 1, maximum: 10 },
+        note: { type: "string", maxLength: 280 },
+        anxiety: {
+          type: "integer",
+          minimum: 1,
+          maximum: 5,
+          description: "1 calm, 2 mild, 3 uneasy, 4 high, 5 very high",
+        },
+        energy: { type: "integer", minimum: 1, maximum: 5, description: "1 empty, 2 low, 3 okay, 4 good, 5 full" },
+        body: {
+          type: "integer",
+          minimum: 1,
+          maximum: 5,
+          description: "1 rough, 2 not great, 3 okay, 4 good, 5 strong",
+        },
+        focus: {
+          type: "integer",
+          minimum: 1,
+          maximum: 5,
+          description: "1 scattered, 2 foggy, 3 okay, 4 clear, 5 locked in",
+        },
+        sleep: { type: "string", maxLength: 140, description: "e.g. '5 hours, woke at 3'" },
+        pain: { type: "string", maxLength: 140, description: "e.g. 'lower back, mild'" },
+      },
       required: ["value"],
     },
   },
@@ -254,10 +279,12 @@ const impl: Record<ToolName, (ctx: ToolContext, a: Args) => string | Promise<str
     const v = Number(a.value);
     if (!Number.isInteger(v) || v < 1 || v > 10) throw new ToolError("value must be an integer from 1 to 10.");
     const note = (typeof a.note === "string" ? a.note : "").trim().slice(0, 280);
-    const { first, xp } = recordMood(ctx.S, v, note, { today: ctx.t, now: ctx.now, via: "claude" });
+    const extras = cleanExtras(a);
+    const { first, xp } = recordMood(ctx.S, v, note, { today: ctx.t, now: ctx.now, via: "claude" }, extras);
     if (first) queueReward(ctx.S, "Mood check-in", xp, ctx.now);
     await ctx.save();
-    return `Logged mood ${v}/10 (${moodLabel(v)})${note ? `: "${note}"` : ""}.${first ? ` +${xp} XP.` : ""}`;
+    const more = describeExtras(extras);
+    return `Logged mood ${v}/10 (${moodLabel(v)})${more ? ` · ${more}` : ""}${note ? `: "${note}"` : ""}.${first ? ` +${xp} XP.` : ""}`;
   },
 
   get_summary({ S, t }, a) {
@@ -273,7 +300,10 @@ const impl: Record<ToolName, (ctx: ToolContext, a: Args) => string | Promise<str
       const d = addDays(t, -i);
       const n = quests.filter((e) => e.day === d).length;
       const m = S.moods.filter((x) => x.day === d).at(-1);
-      perDay.push(`  ${d}: ${plural(n, "quest")}${m ? ` · mood ${m.v}/10${m.note ? ` ("${m.note}")` : ""}` : ""}`);
+      const more = m ? describeExtras(m) : "";
+      perDay.push(
+        `  ${d}: ${plural(n, "quest")}${m ? ` · mood ${m.v}/10${more ? ` · ${more}` : ""}${m.note ? ` ("${m.note}")` : ""}` : ""}`,
+      );
     }
     const byCat: Record<string, number> = {};
     for (const e of quests) byCat[e.g || "Other"] = (byCat[e.g || "Other"] || 0) + 1;

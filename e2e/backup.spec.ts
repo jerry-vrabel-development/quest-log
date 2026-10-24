@@ -2,9 +2,11 @@
 // The e2e server is static, so a small in-test fake stands in for the Worker's /api routes.
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { fileURLToPath } from "node:url";
+import { logMood } from "./helpers";
 
 /** A tiny 80×60 test photo. */
 const PHOTO = fileURLToPath(new URL("fixtures/lake.png", import.meta.url));
+const GIF = fileURLToPath(new URL("fixtures/mood.gif", import.meta.url));
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 /** What the fake server holds: the synced state and the uploaded files, as the Worker would. */
@@ -150,4 +152,21 @@ test("without sync, nothing leaves the device", async ({ browser }) => {
   await phone.waitForTimeout(500);
   expect(cloud.files.size).toBe(0);
   expect(cloud.state).toBeNull();
+});
+
+test("a check-in's picture is backed up encrypted, and removed when the check-in is deleted", async ({ browser }) => {
+  const cloud = newCloud();
+  const phone = await device(browser, cloud);
+  await turnOnSync(phone);
+  await logMood(phone, "5 out of 10, Meh", { picture: GIF });
+  await expect.poll(() => cloud.files.size).toBe(1);
+  const [stored] = [...cloud.files.values()];
+  expect(stored.bytes.includes(Buffer.from("GIF89a"))).toBe(false); // not a readable GIF
+  await phone.getByRole("button", { name: "Collect" }).click();
+  await phone.getByRole("tab", { name: "Journey" }).click();
+  await phone.getByRole("button", { name: /Edit mood check-in at/ }).click();
+  const del = phone.locator("#moodEdit").getByRole("button", { name: "Delete" });
+  await del.click();
+  await del.click();
+  await expect.poll(() => cloud.files.size).toBe(0);
 });

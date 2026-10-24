@@ -1,5 +1,6 @@
 /**
- * Cloud backup for moment files: photos, videos, music files and recordings.
+ * Cloud backup for moment files (photos, videos, music files, recordings) and pictures attached
+ * to check-ins.
  *
  * With sync on, each file is encrypted on this device (src/core/vault.ts) and uploaded; files saved
  * on another device are downloaded, decrypted and kept here; deleted moments are removed from the
@@ -7,7 +8,7 @@
  *
  * A pass runs after every successful sync and after saving a moment. Passes never overlap.
  */
-import { hasMedia } from "../core/moments";
+import { fileIds } from "../core/moments";
 import { MEDIA_QUOTA_BYTES, seal, unseal, vaultKey } from "../core/vault";
 import { $ } from "./dom";
 import { getMedia, hasLocalMedia, loadMediaIndex, saveMedia } from "./media";
@@ -84,7 +85,7 @@ async function pass(): Promise<void> {
   await loadMediaIndex(); // know what's already here before deciding what to fetch
   const remote = await list();
   const there = new Set(remote.items.map((i) => i.id));
-  const withFiles = (S.moments ?? []).filter(hasMedia);
+  const withFiles = fileIds(S); // moment files and check-in pictures
   let full = false;
   let restored = 0;
   for (const m of withFiles) {

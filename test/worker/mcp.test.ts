@@ -154,13 +154,23 @@ describe("tools", () => {
     expect(S.xp).toBe(5);
   });
 
+  it("log_mood records extras in words, ignoring anything off the scale", async () => {
+    expect(
+      (await tool("log_mood", { value: 3, anxiety: 4, energy: 1, focus: 9, sleep: "4 hours", note: "rough night" }))
+        .text,
+    ).toBe('Logged mood 3/10 (Rough) · Anxiety: High · Energy: Empty · Sleep: 4 hours: "rough night". +5 XP.');
+    const [m] = (await state()).moods;
+    expect(m).toMatchObject({ v: 3, anxiety: 4, energy: 1, sleep: "4 hours", via: "claude" });
+    expect(m).not.toHaveProperty("focus");
+  });
+
   it("get_summary reports the week", async () => {
     await tool("complete_quest", { id: 2 });
-    await tool("log_mood", { value: 6, note: "coffee helped" });
+    await tool("log_mood", { value: 6, note: "coffee helped", energy: 4 });
     const { text } = await tool("get_summary", { days: 3 });
     expect(text).toContain("Level 1 (25 XP total, 25/50 to next) · current streak 1 day");
     expect(text).toContain("1 quests completed, 25 XP earned · by area: Career 1");
-    expect(text).toContain('  2026-10-22: 1 quest · mood 6/10 ("coffee helped")');
+    expect(text).toContain('  2026-10-22: 1 quest · mood 6/10 · Energy: Good ("coffee helped")');
     expect(text).toContain("  2026-10-20: 0 quests");
   });
 

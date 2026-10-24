@@ -4,6 +4,7 @@
  *   2. let the core rules change the state and decide how big the moment is,
  *   3. pay out: loot, badges, and a celebration sized to the moment.
  */
+import type { Extras } from "../core/checkin";
 import { celebrationFor, guaranteedDrop, isLowDay, type Moment, type Tier } from "../core/celebrate";
 import { completeQuest, level, recordFreeze, recordMood, rollLoot, streak, uncompleteQuest } from "../core/rules";
 import { chooseMemory, markSeen, memoryChance, type Memory } from "../core/memories";
@@ -130,11 +131,11 @@ export function finishFreeze(step?: string): void {
   reward(before, { kind: "freeze", xp: recordFreeze(S, when(), step).xp });
 }
 
-export function logMood(v: number): void {
+/** Records a check-in from the Log dialog: the click first, then the reward. */
+export function logMood(v: number, note: string, extras: Extras & { media?: string } = {}): void {
   mark();
-  const note = (prompt("Anything you want to remember about today? (optional)") || "").trim().slice(0, 280);
   const before = snapshot();
-  reward(before, { kind: "mood", xp: recordMood(S, v, note, when()).xp, mood: v });
+  reward(before, { kind: "mood", xp: recordMood(S, v, note.trim().slice(0, 280), when(), extras).xp, mood: v });
 }
 
 /** Quests completed through the Claude connector already have their XP; roll their loot here. */

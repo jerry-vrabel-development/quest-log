@@ -1,10 +1,12 @@
 /** The Journey tab: stat tiles, 14-day charts, badges, best days, categories and the activity log. */
+import { describeExtras } from "../core/checkin";
 import { addDays } from "../core/dates";
 import { moodLabel } from "../core/rules";
 import { BADGES, computeStats, moodByDay, type Stats } from "../core/stats";
 import type { LogEvent } from "../core/types";
 import { addNote, deleteNote, NOTE_MAX } from "../core/memories";
 import { el, fmtClock, fmtDay, fmtWeekdayNarrow } from "./dom";
+import { hasLocalMedia, showPhoto } from "./media";
 import { openMoodEditor } from "./moodEdit";
 import { momentsSection } from "./moments";
 import { render } from "./render";
@@ -57,7 +59,7 @@ function moodChart(box: HTMLElement, st: Stats, days: string[], t: string): void
   const moods = moodByDay(S.moods);
   box.append(el("h2", "", `Mood · last ${CHART_DAYS} days`));
   if (!Object.keys(moods).length) {
-    box.append(el("div", "empty", "No check-ins yet. Use the mood card on the Now tab."));
+    box.append(el("div", "empty", "No check-ins yet. Tap 📝 Log at the top whenever you like."));
     return;
   }
   const chart = el("div", "chart moods");
@@ -156,7 +158,7 @@ function describeEvent(e: LogEvent): string {
     case "badge":
       return `🏅 Badge: ${e.name}`;
     case "mood":
-      return `◐ Mood ${e.v}/10 · ${moodLabel(e.v)}${e.note ? " · " + e.note : ""}`;
+      return [`◐ Mood ${String(e.v)}/10 · ${moodLabel(e.v)}`, describeExtras(e), e.note].filter(Boolean).join(" · ");
   }
 }
 
@@ -172,6 +174,12 @@ function activityLog(box: HTMLElement, t: string): void {
     }
     const li = el("li");
     li.append(el("span", "lt", fmtClock(e.at)), el("span", "lx", describeEvent(e)));
+    if (e.t === "mood" && e.media && hasLocalMedia(e.media)) {
+      const img = el("img", "log-pic");
+      img.alt = `Picture with your check-in at ${fmtClock(e.at)}`;
+      void showPhoto(img, e.media);
+      li.append(img);
+    }
     if (e.xp) li.append(el("span", "xp", "+" + e.xp));
     if (e.t === "mood") {
       const edit = el("button", "log-edit", "✎");

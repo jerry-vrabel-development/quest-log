@@ -146,6 +146,16 @@ export const hasMedia = (m: Moment): boolean => FILE_KINDS.includes(m.kind) || m
 export const canShow = (m: Moment, hasLocal: (id: string) => boolean): boolean =>
   !FILE_KINDS.includes(m.kind) || hasLocal(m.id);
 
+/**
+ * Every file the record uses, and whether it's needed to show its entry: moment files, plus
+ * pictures attached to check-ins. Backup keeps exactly these; anything else in the cloud is an orphan.
+ */
+export function fileIds(S: State): { id: string; required: boolean }[] {
+  const out = (S.moments ?? []).filter(hasMedia).map((m) => ({ id: m.id, required: FILE_KINDS.includes(m.kind) }));
+  for (const m of S.moods) if (m.media) out.push({ id: m.media, required: false });
+  return out;
+}
+
 /** Why a video can't be a moment, or null if it can. (Length is read from the file by the app.) */
 export function videoProblem(seconds: number): string | null {
   if (!Number.isFinite(seconds) || seconds <= 0) return "Couldn't play that video. Try another one.";

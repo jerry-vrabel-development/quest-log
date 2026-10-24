@@ -38,6 +38,27 @@ async function addPhotoMoment(page: Page, caption: string) {
   await expect(dlg).toBeHidden();
 }
 
+/** Simulates a slow disk: every file write reports success a second late. Reloads to apply. */
+async function slowDisk(page: Page) {
+  await page.addInitScript(() => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- re-applied with the store as `this`
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>) {
+      const req = put.apply(this, args);
+      let handler: ((e: Event) => void) | null = null;
+      Object.defineProperty(req, "onsuccess", {
+        set: (f: (e: Event) => void) => {
+          handler = f;
+        },
+        get: () => handler,
+      });
+      req.addEventListener("success", (e) => setTimeout(() => handler?.(e), 1000));
+      return req;
+    };
+  });
+  await page.reload();
+}
+
 /** Moves every saved moment to yesterday, so memory drops can bring it back. */
 async function ageMoments(page: Page) {
   await page.evaluate(() => {
@@ -220,6 +241,7 @@ test("on a hard day, a song you saved comes back ready to play, and the chest st
 }) => {
   // This test is about audio, so skip the chest's animation and confetti (they compete for CPU in parallel runs).
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await slowDisk(page); // the CI container's disk is slow; make every run that slow
   await page.getByRole("tab", { name: "Journey" }).click();
   await page.getByRole("button", { name: "Add a moment" }).click();
   const dlg = page.locator("#momentDialog");
@@ -228,6 +250,7 @@ test("on a hard day, a song you saved comes back ready to play, and the chest st
     .getByLabel(/^Music file/)
     .setInputFiles({ name: "harvest-moon.wav", mimeType: "audio/wav", buffer: toneWav() });
   await dlg.getByRole("button", { name: "Save moment" }).click();
+  await expect(dlg).toBeHidden(); // saved (file and moment) before we touch storage and reload
   await ageMoments(page);
   await page.getByRole("button", { name: "3 out of 10, Rough" }).click(); // badge chest, with the song inside
   const chest = page.locator(".chest-overlay");

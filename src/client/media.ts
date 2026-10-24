@@ -26,16 +26,27 @@ function db(): Promise<IDBDatabase> {
   return dbp;
 }
 
+/**
+ * Runs one request. Writes resolve only once the transaction commits, so a file counts as saved
+ * only when it would survive the app closing or reloading right away.
+ */
 async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const store = (await db()).transaction(STORE, mode).objectStore(STORE);
+  const tx = (await db()).transaction(STORE, mode);
   return new Promise((resolve, reject) => {
-    const req = fn(store);
-    req.onsuccess = () => {
-      resolve(req.result);
+    const req = fn(tx.objectStore(STORE));
+    const fail = () => {
+      reject(req.error ?? tx.error ?? new Error("IndexedDB request failed"));
     };
-    req.onerror = () => {
-      reject(req.error ?? new Error("IndexedDB request failed"));
-    };
+    req.onerror = fail;
+    tx.onabort = fail;
+    if (mode === "readonly")
+      req.onsuccess = () => {
+        resolve(req.result);
+      };
+    else
+      tx.oncomplete = () => {
+        resolve(req.result);
+      };
   });
 }
 

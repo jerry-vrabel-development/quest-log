@@ -8,6 +8,8 @@ import { initDice, openDice } from "./dice";
 import { $ } from "./dom";
 import { initEditor, openEditor } from "./editor";
 import { initChartTooltips } from "./journey";
+import { loadPhotoIndex } from "./media";
+import { initMoments } from "./moments";
 import { initMoodEditor } from "./moodEdit";
 import { checkReminders, initReminders } from "./reminders";
 import { isView, render, setView } from "./render";
@@ -26,7 +28,10 @@ initSync();
 initChartTooltips();
 initDice();
 initMoodEditor();
+initMoments();
 initSessionSounds();
+// Photos for moments live in IndexedDB; once we know which are on this device, refresh the view.
+void loadPhotoIndex().then(render);
 
 // The progress panel is sticky; scroll focused items to just below it, never underneath.
 const hud = $(".hud");

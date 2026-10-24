@@ -60,6 +60,25 @@ export interface PendingReward {
   at: number;
 }
 
+export type MomentKind = "photo" | "song" | "movie";
+
+/** Something to remember a day by. A photo's image is stored on the device under the moment id. */
+export interface Moment {
+  id: string;
+  at: number;
+  day: string;
+  kind: MomentKind;
+  caption: string;
+  /** Song or movie title. */
+  title?: string;
+  /** Link to the song or movie (http/https only). */
+  url?: string;
+  /** Where the link points: "Spotify", "YouTube", "IMDb", or a host name. */
+  source?: string;
+  /** Quest category, so finishing a quest in that area can bring it back. */
+  area?: string;
+}
+
 export interface State {
   v: number;
   quests: Quest[];
@@ -81,6 +100,10 @@ export interface State {
   notes?: { at: number; day: string; text: string }[];
   /** Recently shown memory ids, so memory drops stay fresh. */
   memSeen?: string[];
+  /** Photos, songs and movies to remember days by; newest first. */
+  moments?: Moment[];
+  /** The day the app last invited "Save this moment?", so it asks at most once a day. */
+  momentInvite?: { day: string; dismissed: boolean };
   updatedAt?: number;
 }
 

@@ -17,9 +17,10 @@ import { MOOD_LOW, moodLabel } from "./rules";
 import type { Tier } from "./celebrate";
 import { runs } from "./streaks";
 import { addDays } from "./dates";
-import type { State } from "./types";
+import { describeMoment } from "./moments";
+import type { Moment, State } from "./types";
 
-export type MemoryKind = "note" | "comeback" | "hard-day" | "best-day" | "area" | "badge" | "mood";
+export type MemoryKind = "moment" | "note" | "comeback" | "hard-day" | "best-day" | "area" | "badge" | "mood";
 
 export interface Memory {
   /** Stable id, so the same memory isn't shown again too soon. */
@@ -29,8 +30,10 @@ export interface Memory {
   day: string;
   headline: string;
   detail: string;
-  /** The quest category, for "area" memories. */
+  /** The quest category, for "area" and "moment" memories. */
   area?: string;
+  /** The photo, song or movie, for "moment" memories. */
+  moment?: Moment;
 }
 
 export interface PastNote {
@@ -138,6 +141,11 @@ export function candidates(S: State, today: string): Memory[] {
     }
   }
 
+  for (const m of S.moments ?? []) {
+    if (m.day >= today) continue;
+    out.push({ id: `moment:${m.id}`, kind: "moment", day: m.day, area: m.area, moment: m, ...describeMoment(m) });
+  }
+
   for (const n of S.notes ?? []) {
     if (n.day >= today) continue;
     out.push({ id: `note:${String(n.at)}`, kind: "note", day: n.day, headline: "A note from you", detail: n.text });
@@ -151,6 +159,8 @@ export interface MemoryContext {
   tier: Tier;
   /** Category of the quest just finished, if any. */
   area?: string;
+  /** Whether a memory can be shown on this device (a photo whose image isn't here can't). */
+  available?: (m: Memory) => boolean;
 }
 
 const pick = <T>(xs: T[], rng: () => number): T | undefined => xs[Math.floor(rng() * xs.length)];
@@ -159,16 +169,22 @@ const sameDate = (a: string, b: string) => a.slice(5) === b.slice(5) && a.slice(
 /** Chooses the memory that best fits the moment, or null if the record has nothing new yet. */
 export function chooseMemory(S: State, ctx: MemoryContext, rng: () => number = Math.random): Memory | null {
   const seen = new Set(S.memSeen ?? []);
-  const pool = candidates(S, ctx.today).filter((m) => !seen.has(m.id));
+  const ok = ctx.available ?? (() => true);
+  const pool = candidates(S, ctx.today).filter((m) => !seen.has(m.id) && ok(m));
   if (!pool.length) return null;
   const of = (...kinds: MemoryKind[]) => pool.filter((m) => kinds.includes(m.kind));
+  // Moments (photos, songs, movies) are the strongest reward there is: whenever one fits, it wins.
+  const momentsFirst = (ms: Memory[]) =>
+    ms.some((m) => m.kind === "moment") ? ms.filter((m) => m.kind === "moment") : ms;
 
-  const anniversary = pool.filter((m) => sameDate(m.day, ctx.today));
-  const lowDay = ctx.lowDay ? of("note", "comeback", "hard-day") : [];
-  const area = ctx.area ? pool.filter((m) => m.kind === "area" && m.area === ctx.area) : [];
-  const jackpot = ctx.tier === "jackpot" ? of("best-day", "comeback") : [];
-  // Otherwise favor the most personal kinds: notes and mood notes count double.
-  const weighted = [...pool, ...of("note", "mood")];
+  const anniversary = momentsFirst(pool.filter((m) => sameDate(m.day, ctx.today)));
+  const lowDay = ctx.lowDay ? momentsFirst(of("moment", "note", "comeback", "hard-day")) : [];
+  const area =
+    ctx.area ? momentsFirst(pool.filter((m) => (m.kind === "area" || m.kind === "moment") && m.area === ctx.area)) : [];
+  const jackpot = ctx.tier === "jackpot" ? momentsFirst(of("moment", "best-day", "comeback")) : [];
+  // Otherwise favor the most personal kinds: moments count four times, notes and mood notes double.
+  const moments = of("moment");
+  const weighted = [...pool, ...moments, ...moments, ...moments, ...of("note", "mood")];
 
   for (const preferred of [anniversary, lowDay, area, jackpot]) {
     const m = pick(preferred, rng);

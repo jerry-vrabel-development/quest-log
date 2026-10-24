@@ -7,7 +7,6 @@ import type { Memory } from "../core/memories";
 import {
   AUDIO_MAX_BYTES,
   RECORD_MAX_SECONDS,
-  VIDEO_MAX_BYTES,
   addMoment,
   canShow,
   deleteMoment,
@@ -15,14 +14,26 @@ import {
   hasMedia,
   makeMoment,
   titleFromFileName,
+  needsShrink,
   videoProblem,
+  videoTooBig,
 } from "../core/moments";
 import type { Moment, MomentKind } from "../core/types";
 import { $, el, fmtDay } from "./dom";
 import { backupSoon, removeBackup } from "./backup";
-import { deleteMedia, hasLocalMedia, resizePhoto, saveMedia, showPhoto, showPlayable, videoSeconds } from "./media";
+import {
+  deleteMedia,
+  fixDuration,
+  hasLocalMedia,
+  resizePhoto,
+  saveMedia,
+  showPhoto,
+  showPlayable,
+  videoInfo,
+} from "./media";
 import { render } from "./render";
 import { S, save, today } from "./store";
+import { canShrink, shrinkVideo } from "./videoShrink";
 
 const dialog = () => $<HTMLDialogElement>("#momentDialog");
 const form = () => $<HTMLFormElement>("#momentForm");
@@ -55,6 +66,10 @@ const FILE_NOUN: Record<MomentKind, string> = {
   movie: "File",
 };
 
+/** Bumped each time a video is picked, so a slower, older shrink can't overwrite a newer pick. */
+let videoPick = 0;
+let shrinking = false;
+
 /** Memory drops can show a moment only if its photo or recording is on this device. */
 export const momentAvailable = (m: Memory): boolean => !m.moment || canShow(m.moment, hasLocalMedia);
 
@@ -68,8 +83,10 @@ function syncKind(): void {
 
 function setPreview(player: HTMLMediaElement, blob: Blob | null): void {
   if (player.src) URL.revokeObjectURL(player.src);
-  if (blob) player.src = URL.createObjectURL(blob);
-  else player.removeAttribute("src");
+  if (blob) {
+    fixDuration(player);
+    player.src = URL.createObjectURL(blob);
+  } else player.removeAttribute("src");
   player.hidden = !blob;
 }
 
@@ -138,6 +155,9 @@ export function openMomentDialog({ invite = false }: { invite?: boolean } = {}):
   setPreview($<HTMLAudioElement>("#momentAudioPreview"), null);
   setPreview($<HTMLAudioElement>("#recordPreview"), null);
   setPreview($<HTMLVideoElement>("#momentVideoPreview"), null);
+  videoPick++;
+  shrinking = false;
+  $("#videoStatus").textContent = "";
   $("#recordBtn").textContent = "● Record";
   $("#recordStatus").textContent = "Up to 2 minutes.";
   $("#momentError").textContent = "";
@@ -158,6 +178,10 @@ async function onSubmit(e: SubmitEvent): Promise<void> {
   const kind = kindNow();
   if (recorder) {
     err.textContent = "Stop the recording first.";
+    return;
+  }
+  if (kind === "video" && shrinking) {
+    err.textContent = "One moment: the video is still getting smaller.";
     return;
   }
   const file = kind === "movie" ? null : picked[kind];
@@ -387,18 +411,48 @@ export function initMoments(): void {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     const preview = $<HTMLVideoElement>("#momentVideoPreview");
-    err.textContent = "";
+    const status = $("#videoStatus");
+    const pick = ++videoPick;
+    err.textContent = status.textContent = "";
     picked.video = null;
+    shrinking = false;
     setPreview(preview, null);
     if (!file) return;
-    const problem = videoProblem(file.size, file.size > VIDEO_MAX_BYTES ? 1 : await videoSeconds(file));
+    const info = await videoInfo(file);
+    const problem = videoProblem(info.seconds);
     if (problem) {
       err.textContent = problem;
       input.value = "";
       return;
     }
-    picked.video = file;
-    setPreview(preview, file);
+    let clip: Blob = file;
+    if (needsShrink(file.size, info.width, info.height) && canShrink()) {
+      shrinking = true;
+      const total = Math.round(info.seconds);
+      status.textContent = "Making it smaller for your phone…";
+      try {
+        clip = await shrinkVideo(file, (done) => {
+          if (pick !== videoPick) return;
+          const left = Math.max(0, Math.ceil(total * (1 - done)));
+          status.textContent = `Making it smaller for your phone… ${String(left)} s left`;
+        });
+      } catch {
+        clip = file; // couldn't shrink here: try the original
+      }
+      if (pick !== videoPick) return; // another video was picked, or the dialog was closed
+      shrinking = false;
+      status.textContent =
+        clip === file ? "" : `Ready: ${String(Math.max(1, Math.round(clip.size / (1024 * 1024))))} MB.`;
+    }
+    const tooBig = videoTooBig(clip.size);
+    if (tooBig) {
+      err.textContent = tooBig;
+      status.textContent = "";
+      input.value = "";
+      return;
+    }
+    picked.video = clip;
+    setPreview(preview, clip);
   };
 
   $("#recordBtn").onclick = () => {
@@ -410,5 +464,9 @@ export function initMoments(): void {
   form().addEventListener("submit", (e) => {
     void onSubmit(e);
   });
-  dialog().addEventListener("close", stopRecording);
+  dialog().addEventListener("close", () => {
+    stopRecording();
+    videoPick++; // drop any shrink still running for this dialog
+    shrinking = false;
+  });
 }

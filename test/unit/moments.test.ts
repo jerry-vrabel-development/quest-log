@@ -12,7 +12,10 @@ import {
   titleFromFileName,
   VIDEO_MAX_BYTES,
   VIDEO_MAX_SECONDS,
+  needsShrink,
+  shrinkSize,
   videoProblem,
+  videoTooBig,
 } from "../../src/core/moments";
 import { completeQuest } from "../../src/core/rules";
 import type { Moment, State } from "../../src/core/types";
@@ -203,15 +206,34 @@ describe("video moments", () => {
     expect(canShow(v, () => true)).toBe(true);
   });
 
-  it("holds clips up to a minute and 95 MB", () => {
-    const MB = 1024 * 1024;
-    expect(videoProblem(20 * MB, 45)).toBeNull();
-    expect(videoProblem(20 * MB, VIDEO_MAX_SECONDS)).toBeNull();
-    expect(videoProblem(20 * MB, 60.3)).toBeNull(); // phones round a "1:00" clip up a little
-    expect(videoProblem(20 * MB, 95)).toBe(
+  it("holds clips up to a minute", () => {
+    expect(videoProblem(45)).toBeNull();
+    expect(videoProblem(VIDEO_MAX_SECONDS)).toBeNull();
+    expect(videoProblem(60.3)).toBeNull(); // phones round a "1:00" clip up a little
+    expect(videoProblem(95)).toBe(
       "That video is 95 seconds. Moments hold up to a minute: trim it first, or pick a shorter one.",
     );
-    expect(videoProblem(VIDEO_MAX_BYTES + 1, 10)).toBe("That video is over 95 MB. Try a shorter clip.");
-    expect(videoProblem(MB, Number.NaN)).toBe("Couldn't play that video. Try another one.");
+    expect(videoProblem(Number.NaN)).toBe("Couldn't play that video. Try another one.");
+  });
+
+  it("shrinks big or high-resolution clips, and leaves small 720p ones alone", () => {
+    const MB = 1024 * 1024;
+    expect(needsShrink(130 * MB, 3840, 2160)).toBe(true); // 20 s of 4K
+    expect(needsShrink(8 * MB, 1920, 1080)).toBe(true); // small file, but 1080p
+    expect(needsShrink(30 * MB, 1280, 720)).toBe(true); // 720p, but heavy
+    expect(needsShrink(6 * MB, 1280, 720)).toBe(false);
+    expect(needsShrink(2 * MB, 720, 1280)).toBe(false); // portrait 720p
+  });
+
+  it("shrinks to 1280 on the long side, same shape, even sizes", () => {
+    expect(shrinkSize(3840, 2160)).toEqual({ width: 1280, height: 720 });
+    expect(shrinkSize(1080, 1920)).toEqual({ width: 720, height: 1280 }); // portrait
+    expect(shrinkSize(1000, 750)).toEqual({ width: 1000, height: 750 }); // never upscales
+    expect((shrinkSize(1921, 1081).width % 2) + (shrinkSize(1921, 1081).height % 2)).toBe(0);
+  });
+
+  it("checks the final size against the cap", () => {
+    expect(videoTooBig(20 * 1024 * 1024)).toBeNull();
+    expect(videoTooBig(VIDEO_MAX_BYTES + 1)).toBe("That video is still too big after shrinking. Try a shorter clip.");
   });
 });

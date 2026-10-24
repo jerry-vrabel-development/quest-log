@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 /** Tiny test videos: a 2-second clip, and a 70-second one (over the one-minute limit). */
 const CLIP = fileURLToPath(new URL("fixtures/clip-2s.webm", import.meta.url));
 const LONG_CLIP = fileURLToPath(new URL("fixtures/clip-70s.webm", import.meta.url));
+/** A 2-second 1080p clip with sound, like a phone would record (only much lighter). */
+const BIG_CLIP = fileURLToPath(new URL("fixtures/clip-1080p.webm", import.meta.url));
 
 /** A tiny 80×60 test photo. */
 const PHOTO = Buffer.from(
@@ -239,6 +241,8 @@ test("a recording made in the app is saved and plays back", async ({ page }) => 
   await expect(page.locator(".moments")).toContainText("🎙️ the new riff");
   await expect(page.locator(".moments audio")).toHaveAttribute("aria-label", "Play your recording: the new riff");
   await expect.poll(() => page.locator(".moments audio").evaluate((a: HTMLAudioElement) => a.src)).toMatch(/^blob:/);
+  // Browser recordings don't store their length; the player still has to know it (to seek).
+  await playable(page.locator(".moments audio"));
 });
 
 test("on a hard day, a song you saved comes back ready to play, and the chest stays open while you listen", async ({
@@ -321,4 +325,37 @@ test("on a hard day, a video you saved comes back in the chest, ready to play", 
   await expect(chest).toBeVisible();
   await chest.getByRole("button", { name: "Collect" }).click();
   await expect(chest).toHaveCount(0);
+});
+
+test("a big phone video is shrunk on the device before it's saved, sound and all", async ({ page }) => {
+  const dlg = await addVideoMoment(page, BIG_CLIP, "Bash in 1080p");
+  await expect(dlg.locator("#videoStatus")).toContainText("Making it smaller");
+  // Save waits while it works.
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  await expect(dlg.getByRole("alert")).toHaveText("One moment: the video is still getting smaller.");
+  await expect(dlg.locator("#videoStatus")).toContainText(/^Ready: \d+ MB\.$/, { timeout: 20_000 });
+  const preview = dlg.locator("#momentVideoPreview");
+  await playable(preview);
+  expect(await preview.evaluate((v: HTMLVideoElement) => [v.videoWidth, v.videoHeight])).toEqual([1280, 720]);
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  await expect(dlg).toBeHidden();
+  const saved = page.locator(".moments video");
+  await playable(saved);
+  expect(await saved.evaluate((v: HTMLVideoElement) => v.videoWidth)).toBe(1280);
+  // The sound came along: play it (muted) and check audio was decoded.
+  const audioBytes = () =>
+    saved.evaluate(async (v: HTMLVideoElement & { webkitAudioDecodedByteCount?: number }) => {
+      v.muted = true;
+      await v.play();
+      await new Promise((r) => setTimeout(r, 600));
+      v.pause();
+      return v.webkitAudioDecodedByteCount ?? 0;
+    });
+  expect(await audioBytes()).toBeGreaterThan(0);
+});
+
+test("a small 720p clip is saved as it is", async ({ page }) => {
+  const dlg = await addVideoMoment(page, CLIP, "small already");
+  await playable(dlg.locator("#momentVideoPreview"));
+  await expect(dlg.locator("#videoStatus")).toHaveText("");
 });

@@ -130,31 +130,60 @@ export async function showPhoto(img: HTMLImageElement, id: string): Promise<bool
   return true;
 }
 
+/**
+ * Files recorded in the browser (MediaRecorder WebM) don't store their length, so players show
+ * "infinite" and can't seek. Asking for a time past the end makes the browser find the real length.
+ */
+export function fixDuration(player: HTMLMediaElement): void {
+  player.addEventListener(
+    "loadedmetadata",
+    () => {
+      if (player.duration !== Infinity) return;
+      player.addEventListener(
+        "durationchange",
+        () => {
+          player.currentTime = 0;
+        },
+        { once: true },
+      );
+      player.currentTime = Number.MAX_SAFE_INTEGER;
+    },
+    { once: true },
+  );
+}
+
 /** Puts a saved music file, recording or video into a player. (The URL lives as long as the page.) */
 export async function showPlayable(player: HTMLMediaElement, id: string): Promise<boolean> {
   const blob = await getMedia(id);
   if (!blob) return false;
+  fixDuration(player);
   player.src = URL.createObjectURL(blob);
   return true;
 }
 
-/** Reads a video file's length in seconds (NaN if the browser can't play it). */
-export function videoSeconds(file: Blob): Promise<number> {
+export interface VideoInfo {
+  seconds: number;
+  width: number;
+  height: number;
+}
+
+/** Reads a video file's length and size (seconds is NaN if the browser can't play it). */
+export function videoInfo(file: Blob): Promise<VideoInfo> {
   return new Promise((resolve) => {
     const v = document.createElement("video");
     const url = URL.createObjectURL(file);
-    const done = (s: number) => {
+    const done = (info: VideoInfo) => {
       URL.revokeObjectURL(url);
       v.removeAttribute("src");
-      resolve(s);
+      resolve(info);
     };
     v.preload = "metadata";
     v.muted = true;
     v.onloadedmetadata = () => {
-      done(v.duration);
+      done({ seconds: v.duration, width: v.videoWidth, height: v.videoHeight });
     };
     v.onerror = () => {
-      done(Number.NaN);
+      done({ seconds: Number.NaN, width: 0, height: 0 });
     };
     v.src = url;
   });

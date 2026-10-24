@@ -9,12 +9,15 @@ import type { Memory } from "../core/memories";
 import type { LootItem } from "../core/types";
 import { confetti, prefersReducedMotion } from "./confetti";
 import { el, fmtDay } from "./dom";
+import { momentMedia, showMemoryPop } from "./moments";
 import { buzz, playReward } from "./sound";
 import { toastQueue, type ToastItem } from "./toast";
 
 /** Pause between the marker click and the payoff, so they read as two beats. */
 const REWARD_DELAY_MS = 150;
 const CHEST_OPEN_MS = 650;
+/** Lets the reward sound land before a moment takes the screen. */
+const MEMORY_POP_DELAY_MS = 700;
 
 export interface Payout {
   celebration: Celebration;
@@ -38,6 +41,14 @@ export function celebrate({ celebration, item, toasts, memory = null }: Payout):
       return;
     }
     if (tier === "good") confetti(50);
+    if (memory?.moment) {
+      // A photo, song or movie deserves the whole screen, not a passing toast.
+      toastQueue(toasts);
+      setTimeout(() => {
+        showMemoryPop(memory);
+      }, MEMORY_POP_DELAY_MS);
+      return;
+    }
     toastQueue(memory ? [...toasts, ["memory", `${fmtDay(memory.day)} · ${memory.headline}`, memory.detail]] : toasts);
   }, REWARD_DELAY_MS);
 }
@@ -67,6 +78,11 @@ function openChest(reasons: string[], item: LootItem | null, memory: Memory | nu
   if (memory) {
     const mem = el("div", "chest-memory");
     mem.append(el("span", "chest-memory-label", memoryLabel(memory)), el("b", "", memory.headline));
+    if (memory.moment) {
+      const media = el("div", "chest-memory-media");
+      momentMedia(media, memory.moment);
+      mem.append(media);
+    }
     if (memory.detail) mem.append(el("span", "chest-memory-detail", memory.detail));
     card.append(mem);
   }

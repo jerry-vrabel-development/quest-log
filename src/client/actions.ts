@@ -11,6 +11,7 @@ import { checkBadges, type EarnedBadge } from "../core/stats";
 import { comebackFor, type Comeback } from "../core/streaks";
 import type { Quest } from "../core/types";
 import { celebrate } from "./celebration";
+import { inviteMoment, momentAvailable } from "./moments";
 import { render } from "./render";
 import { buzz, playMarker } from "./sound";
 import { S, save, today, when } from "./store";
@@ -50,7 +51,13 @@ function pickMemory(m: {
 }): Memory | null {
   if (m.xp <= 0 && !(m.kind === "mood" && m.lowDay)) return null;
   if (Math.random() >= memoryChance(m.tier, m.lowDay)) return null;
-  const memory = chooseMemory(S, { today: today(), lowDay: m.lowDay, tier: m.tier, area: m.area });
+  const memory = chooseMemory(S, {
+    today: today(),
+    lowDay: m.lowDay,
+    tier: m.tier,
+    area: m.area,
+    available: momentAvailable,
+  });
   if (memory) markSeen(S, memory);
   return memory;
 }
@@ -64,7 +71,8 @@ function reward(
     questXp,
     repeatCount = 0,
     area,
-  }: { kind: Moment["kind"]; xp: number; questXp?: number; repeatCount?: number; area?: string },
+    mood,
+  }: { kind: Moment["kind"]; xp: number; questXp?: number; repeatCount?: number; area?: string; mood?: number },
 ): void {
   const t = today();
   const lowDay = isLowDay(S.moods, t);
@@ -89,6 +97,8 @@ function reward(
     comeback,
   });
   const memory = pickMemory({ kind, xp, tier: celebration.tier, lowDay, area });
+  // Capture when it's good: invite saving a moment after a 7+ check-in, a jackpot or a comeback.
+  if ((mood ?? 0) >= 7 || celebration.tier === "jackpot" || comeback) inviteMoment();
   save();
   render();
 
@@ -124,7 +134,7 @@ export function logMood(v: number): void {
   mark();
   const note = (prompt("Anything you want to remember about today? (optional)") || "").trim().slice(0, 280);
   const before = snapshot();
-  reward(before, { kind: "mood", xp: recordMood(S, v, note, when()).xp });
+  reward(before, { kind: "mood", xp: recordMood(S, v, note, when()).xp, mood: v });
 }
 
 /** Quests completed through the Claude connector already have their XP; roll their loot here. */

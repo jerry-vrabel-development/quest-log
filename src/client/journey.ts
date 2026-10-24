@@ -6,6 +6,7 @@ import type { LogEvent } from "../core/types";
 import { addNote, deleteNote, NOTE_MAX } from "../core/memories";
 import { el, fmtClock, fmtDay, fmtWeekdayNarrow } from "./dom";
 import { openMoodEditor } from "./moodEdit";
+import { momentsSection } from "./moments";
 import { render } from "./render";
 import { S, save, when } from "./store";
 
@@ -233,6 +234,7 @@ export function renderJourney(box: HTMLElement, t: string): void {
   xpChart(box, st, days, t);
   moodChart(box, st, days, t);
   badges(box);
+  momentsSection(box);
   notesFromPastYou(box);
   hallOfFame(box, st, t);
   categories(box, st);

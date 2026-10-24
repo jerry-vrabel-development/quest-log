@@ -19,6 +19,7 @@ import {
 } from "../core/moments";
 import type { Moment, MomentKind } from "../core/types";
 import { $, el, fmtDay } from "./dom";
+import { backupSoon, removeBackup } from "./backup";
 import { deleteMedia, hasLocalMedia, resizePhoto, saveMedia, showPhoto, showPlayable, videoSeconds } from "./media";
 import { render } from "./render";
 import { S, save, today } from "./store";
@@ -191,6 +192,7 @@ async function onSubmit(e: SubmitEvent): Promise<void> {
   save();
   dialog().close();
   render();
+  if (file) void backupSoon();
 }
 
 /* ---------- invite ---------- */
@@ -329,7 +331,10 @@ export function momentsSection(box: HTMLElement): void {
     del.setAttribute("aria-label", `Delete moment from ${fmtDay(m.day)}`);
     del.onclick = () => {
       deleteMoment(S, m.id);
-      if (hasMedia(m)) void deleteMedia(m.id);
+      if (hasMedia(m)) {
+        void deleteMedia(m.id);
+        void removeBackup(m.id);
+      }
       save();
       render();
     };

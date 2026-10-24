@@ -1,13 +1,14 @@
-// The app's REST API: state sync, push subscriptions and the notification outbox.
+// The app's REST API: state sync, moment file backup, push subscriptions and the notification outbox.
 // Authenticated by the sync code as a bearer token; the server only stores its hash.
 import { isValidTimeZone } from "../core/dates";
 import { DEFAULT_TZ, addSub, enqueue, getUpdatedAt, getUser, putUser, removeSub, takeOutbox } from "./db";
 import { json, readJson, userIdFromRequest } from "./http";
+import { handleMediaItem, listMedia } from "./media";
 import { pushUser, type PushSender } from "./push";
 
 export const MAX_STATE_BYTES = 1_000_000;
 
-export type ApiEnv = Pick<Env, "DB" | "VAPID_PUBLIC_KEY" | "VAPID_PRIVATE_JWK" | "VAPID_SUBJECT">;
+export type ApiEnv = Pick<Env, "DB" | "MEDIA" | "VAPID_PUBLIC_KEY" | "VAPID_PRIVATE_JWK" | "VAPID_SUBJECT">;
 export interface ApiDeps {
   push: PushSender;
 }
@@ -63,6 +64,10 @@ const routes: Partial<Record<string, Handler>> = {
     return json({ ok: true, updatedAt });
   },
 
+  async "GET /api/media"(_req, env, userId) {
+    return listMedia(env, userId);
+  },
+
   async "POST /api/subscribe"(req, env, userId) {
     const { endpoint } = (await readJson<{ endpoint?: unknown }>(req)) || {};
     if (!isPushEndpoint(endpoint)) return json({ error: "bad_endpoint" }, 400);
@@ -98,11 +103,14 @@ export async function handleApi(req: Request, env: ApiEnv, deps: ApiDeps = { pus
   const url = new URL(req.url);
   const route = `${req.method} ${url.pathname}`;
   if (route === "GET /api/config") return json({ vapidPublicKey: env.VAPID_PUBLIC_KEY });
+  const mediaId = /^\/api\/media\/([^/]+)$/.exec(url.pathname)?.[1];
   const handler = routes[route];
-  if (!handler) return json({ error: "not_found" }, 404);
+  if (!handler && mediaId === undefined) return json({ error: "not_found" }, 404);
   const userId = await userIdFromRequest(req);
   if (!userId) return json({ error: "unauthorized" }, 401);
   try {
+    if (mediaId !== undefined) return await handleMediaItem(req, env, userId, mediaId);
+    if (!handler) return json({ error: "not_found" }, 404);
     return await handler(req, env, userId, deps);
   } catch (err) {
     console.error(err);

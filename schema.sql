@@ -32,3 +32,13 @@ CREATE TABLE IF NOT EXISTS outbox (
   delivered  INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS outbox_user ON outbox(user_id, delivered);
+
+-- moment files backed up to R2 (key: <user_id>/<id>). Contents are encrypted on the device first,
+-- with a key derived from the sync code, so the server only ever holds ciphertext.
+CREATE TABLE IF NOT EXISTS media (
+  user_id    TEXT NOT NULL,
+  id         TEXT NOT NULL,             -- the moment id
+  size       INTEGER NOT NULL,          -- bytes stored (encrypted)
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, id)
+);

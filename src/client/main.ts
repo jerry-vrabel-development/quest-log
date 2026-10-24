@@ -16,6 +16,7 @@ import { isView, render, setView } from "./render";
 import { initSessionSounds } from "./session";
 import { applyTheme, initSettings } from "./settings";
 import { load, today } from "./store";
+import { initBackup } from "./backup";
 import { initSync, pullState } from "./sync";
 
 const REMINDER_POLL_MS = 30_000;
@@ -25,6 +26,7 @@ initEditor();
 initReminders();
 initSettings();
 initSync();
+initBackup();
 initChartTooltips();
 initDice();
 initMoodEditor();

@@ -1413,3 +1413,81 @@ legend {
     animation: none;
   }
 }
+
+/* ---------- memory drops ---------- */
+.chest-memory {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  text-align: left;
+}
+.chest-memory-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.chest-memory-detail {
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.note-form label {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.note-form textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+.notes {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.notes li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+.note-day {
+  flex: none;
+  width: 92px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.note-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.note-del {
+  flex: none;
+  min-width: 28px;
+  min-height: 28px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+}

@@ -4,8 +4,9 @@
  *   2. let the core rules change the state and decide how big the moment is,
  *   3. pay out: loot, badges, and a celebration sized to the moment.
  */
-import { celebrationFor, guaranteedDrop, isLowDay, type Moment } from "../core/celebrate";
+import { celebrationFor, guaranteedDrop, isLowDay, type Moment, type Tier } from "../core/celebrate";
 import { completeQuest, level, recordFreeze, recordMood, rollLoot, streak, uncompleteQuest } from "../core/rules";
+import { chooseMemory, markSeen, memoryChance, type Memory } from "../core/memories";
 import { checkBadges, type EarnedBadge } from "../core/stats";
 import { comebackFor, type Comeback } from "../core/streaks";
 import type { Quest } from "../core/types";
@@ -36,10 +37,34 @@ const snapshot = (): Before => ({
 });
 const questsToday = () => S.log.filter((e) => e.t === "quest" && e.day === today()).length;
 
-/** Steps 2 and 3: roll loot, check badges, save, render, and celebrate. */
+/**
+ * Sometimes a reward also brings back a memory from your own record, chosen for the moment.
+ * Hard days always do, even for a second mood check-in that earns no XP.
+ */
+function pickMemory(m: {
+  kind: Moment["kind"];
+  xp: number;
+  tier: Tier;
+  lowDay: boolean;
+  area?: string;
+}): Memory | null {
+  if (m.xp <= 0 && !(m.kind === "mood" && m.lowDay)) return null;
+  if (Math.random() >= memoryChance(m.tier, m.lowDay)) return null;
+  const memory = chooseMemory(S, { today: today(), lowDay: m.lowDay, tier: m.tier, area: m.area });
+  if (memory) markSeen(S, memory);
+  return memory;
+}
+
+/** Steps 2 and 3: roll loot, check badges, pick a memory, save, render, and celebrate. */
 function reward(
   before: Before,
-  { kind, xp, questXp, repeatCount = 0 }: { kind: Moment["kind"]; xp: number; questXp?: number; repeatCount?: number },
+  {
+    kind,
+    xp,
+    questXp,
+    repeatCount = 0,
+    area,
+  }: { kind: Moment["kind"]; xp: number; questXp?: number; repeatCount?: number; area?: string },
 ): void {
   const t = today();
   const lowDay = isLowDay(S.moods, t);
@@ -47,8 +72,6 @@ function reward(
   const item =
     xp > 0 ? rollLoot(S, Math.random, Date.now(), guaranteedDrop({ repeatCount, lowDay, comeback: !!comeback })) : null;
   const badges = checkBadges(S, when());
-  save();
-  render();
 
   const levelAfter = level(S.xp).l;
   const celebration = celebrationFor({
@@ -65,13 +88,16 @@ function reward(
     lowDay,
     comeback,
   });
+  const memory = pickMemory({ kind, xp, tier: celebration.tier, lowDay, area });
+  save();
+  render();
 
   const toasts: ToastItem[] = [];
   if (levelAfter > before.level) toasts.push(["level up", `Level ${levelAfter}!`, "You're moving. Keep it gentle."]);
   if (item) toasts.push([item.rar, item.n, item.d]);
   toasts.push(...badges.map(badgeToast));
   if (!toasts.length && xp > 0) toasts.push([`+${xp} xp`, "Nice.", "No drop this time. The next one might be big."]);
-  celebrate({ celebration, item, toasts });
+  celebrate({ celebration, item, toasts, memory });
 }
 
 export function setQuestDone(q: Quest, checked: boolean): void {
@@ -84,7 +110,7 @@ export function setQuestDone(q: Quest, checked: boolean): void {
   mark();
   const before = snapshot();
   const { xp } = completeQuest(S, q, when());
-  reward(before, { kind: "quest", xp, questXp: q.xp, repeatCount: q.repeat !== "none" ? q.count : 0 });
+  reward(before, { kind: "quest", xp, questXp: q.xp, repeatCount: q.repeat !== "none" ? q.count : 0, area: q.g });
 }
 
 /** The two minutes are done (the dice already played the marker when they started). */

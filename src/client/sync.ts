@@ -32,6 +32,15 @@ export let SYNC: SyncSettings = (() => {
 })();
 
 type SyncStatus = "" | "synced" | "offline" | "error";
+
+/** Called after each successful sync with the server, and when sync is turned off. */
+const syncListeners: (() => void)[] = [];
+export function onSynced(fn: () => void): void {
+  syncListeners.push(fn);
+}
+const synced = () => {
+  for (const fn of syncListeners) fn();
+};
 let syncStatus: SyncStatus = "";
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -51,9 +60,9 @@ export async function writeSwConfig(): Promise<void> {
   }
 }
 
-function apiFetch(path: string, opts: RequestInit = {}): Promise<Response> {
+export function apiFetch(path: string, opts: RequestInit = {}): Promise<Response> {
   const headers = new Headers(opts.headers);
-  headers.set("content-type", "application/json");
+  if (!headers.has("content-type")) headers.set("content-type", "application/json");
   headers.set("Authorization", `Bearer ${SYNC.code ?? ""}`);
   return fetch(path, { ...opts, headers });
 }
@@ -99,6 +108,7 @@ export async function pullState(): Promise<void> {
     const res = await apiFetch("/api/state");
     if (res.status === 404) {
       await pushState(true); // first device: upload
+      synced();
       return;
     }
     if (!res.ok) {
@@ -119,6 +129,7 @@ export async function pullState(): Promise<void> {
       await pushState();
     }
     setSyncStatus("synced");
+    synced();
   } catch {
     setSyncStatus("offline");
   }
@@ -234,6 +245,7 @@ export function initSync(): void {
     SYNC = {};
     saveSync();
     updateSyncUI();
+    synced();
   };
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) void pullState();

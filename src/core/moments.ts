@@ -15,9 +15,12 @@ export const TITLE_MAX = 120;
 export const AUDIO_MAX_BYTES = 25 * 1024 * 1024;
 /** Longest in-app recording. */
 export const RECORD_MAX_SECONDS = 120;
-/** A video moment is a short clip: up to a minute and 100 MB, so a phone video fits and storage doesn't fill up. */
+/**
+ * A video moment is a short clip: up to a minute and 95 MB, so a phone video fits, storage doesn't fill
+ * up, and the encrypted backup stays under the 100 MB Workers upload limit.
+ */
 export const VIDEO_MAX_SECONDS = 60;
-export const VIDEO_MAX_BYTES = 100 * 1024 * 1024;
+export const VIDEO_MAX_BYTES = 95 * 1024 * 1024;
 
 export interface LinkInfo {
   url: string;
@@ -137,7 +140,7 @@ export const canShow = (m: Moment, hasLocal: (id: string) => boolean): boolean =
 
 /** Why a video can't be a moment, or null if it can. (Duration is read from the file by the app.) */
 export function videoProblem(bytes: number, seconds: number): string | null {
-  if (bytes > VIDEO_MAX_BYTES) return "That video is over 100 MB. Try a shorter clip.";
+  if (bytes > VIDEO_MAX_BYTES) return "That video is over 95 MB. Try a shorter clip.";
   if (!Number.isFinite(seconds) || seconds <= 0) return "Couldn't play that video. Try another one.";
   if (seconds > VIDEO_MAX_SECONDS + 0.5)
     return `That video is ${String(Math.round(seconds))} seconds. Moments hold up to a minute: trim it first, or pick a shorter one.`;

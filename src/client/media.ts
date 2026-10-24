@@ -124,10 +124,32 @@ export async function showPhoto(img: HTMLImageElement, id: string): Promise<bool
   return true;
 }
 
-/** Puts a saved music file or recording into an <audio> player. (The URL lives as long as the page.) */
-export async function showAudio(audio: HTMLAudioElement, id: string): Promise<boolean> {
+/** Puts a saved music file, recording or video into a player. (The URL lives as long as the page.) */
+export async function showPlayable(player: HTMLMediaElement, id: string): Promise<boolean> {
   const blob = await getMedia(id);
   if (!blob) return false;
-  audio.src = URL.createObjectURL(blob);
+  player.src = URL.createObjectURL(blob);
   return true;
+}
+
+/** Reads a video file's length in seconds (NaN if the browser can't play it). */
+export function videoSeconds(file: Blob): Promise<number> {
+  return new Promise((resolve) => {
+    const v = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    const done = (s: number) => {
+      URL.revokeObjectURL(url);
+      v.removeAttribute("src");
+      resolve(s);
+    };
+    v.preload = "metadata";
+    v.muted = true;
+    v.onloadedmetadata = () => {
+      done(v.duration);
+    };
+    v.onerror = () => {
+      done(Number.NaN);
+    };
+    v.src = url;
+  });
 }

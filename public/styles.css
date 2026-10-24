@@ -1559,6 +1559,22 @@ legend {
 .moment-audio[hidden] {
   display: none;
 }
+.moment-video {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  border-radius: 12px;
+  background: #000;
+}
+.moment-video[hidden] {
+  display: none;
+}
+.chest-memory-media .moment-video {
+  max-height: 220px;
+}
+.memory-pop-media .moment-video {
+  max-height: 60vh;
+}
 .moment-preview,
 .moment-img {
   display: block;

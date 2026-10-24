@@ -21,6 +21,14 @@ export const RECORD_MAX_SECONDS = 120;
  */
 export const VIDEO_MAX_SECONDS = 60;
 export const VIDEO_MAX_BYTES = 95 * 1024 * 1024;
+/**
+ * Phones record big (4K is ~6 MB a second), so bigger clips are shrunk on the device before saving:
+ * to at most 1280 px on the long side, at about the bitrate of a 720p stream. A minute comes out
+ * around 20 MB. Clips already small and at most 720p are kept as they are.
+ */
+export const VIDEO_SHRINK_OVER_BYTES = 20 * 1024 * 1024;
+export const VIDEO_LONG_SIDE = 1280;
+export const VIDEO_BITRATE = 2_500_000;
 
 export interface LinkInfo {
   url: string;
@@ -138,14 +146,28 @@ export const hasMedia = (m: Moment): boolean => FILE_KINDS.includes(m.kind) || m
 export const canShow = (m: Moment, hasLocal: (id: string) => boolean): boolean =>
   !FILE_KINDS.includes(m.kind) || hasLocal(m.id);
 
-/** Why a video can't be a moment, or null if it can. (Duration is read from the file by the app.) */
-export function videoProblem(bytes: number, seconds: number): string | null {
-  if (bytes > VIDEO_MAX_BYTES) return "That video is over 95 MB. Try a shorter clip.";
+/** Why a video can't be a moment, or null if it can. (Length is read from the file by the app.) */
+export function videoProblem(seconds: number): string | null {
   if (!Number.isFinite(seconds) || seconds <= 0) return "Couldn't play that video. Try another one.";
   if (seconds > VIDEO_MAX_SECONDS + 0.5)
     return `That video is ${String(Math.round(seconds))} seconds. Moments hold up to a minute: trim it first, or pick a shorter one.`;
   return null;
 }
+
+/** Whether a clip should be shrunk before saving: too many bytes, or bigger than 720p. */
+export const needsShrink = (bytes: number, width: number, height: number): boolean =>
+  bytes > VIDEO_SHRINK_OVER_BYTES || Math.max(width, height) > VIDEO_LONG_SIDE;
+
+/** The size a clip is shrunk to: the same shape, at most VIDEO_LONG_SIDE on the long side, even numbers. */
+export function shrinkSize(width: number, height: number): { width: number; height: number } {
+  const scale = Math.min(1, VIDEO_LONG_SIDE / Math.max(width, height, 1));
+  const even = (n: number) => Math.max(2, 2 * Math.round((n * scale) / 2));
+  return { width: even(width), height: even(height) };
+}
+
+/** Even after shrinking, a clip has to fit the cap (and the 100 MB upload limit). */
+export const videoTooBig = (bytes: number): string | null =>
+  bytes > VIDEO_MAX_BYTES ? "That video is still too big after shrinking. Try a shorter clip." : null;
 
 /** "01 - Harvest_Moon.mp3" → "Harvest Moon": a title guessed from a music file's name. */
 export function titleFromFileName(name: string): string {

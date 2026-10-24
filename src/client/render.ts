@@ -1,11 +1,11 @@
 /** Renders the HUD and the current tab. */
 import { daysBetween } from "../core/dates";
 import { byCategory, nowView, rollMissed, upcoming } from "../core/quests";
-import { MOODS, MOOD_LOW, MOOD_XP, bestStreak, level, moodLabel, streak } from "../core/rules";
+import { bestStreak, level, streak } from "../core/rules";
 import { comebackFor } from "../core/streaks";
 import type { Quest } from "../core/types";
-import { logMood, setQuestDone } from "./actions";
-import { $, el, fmtClock, fmtDue, REPEAT_LABEL } from "./dom";
+import { setQuestDone } from "./actions";
+import { $, el, fmtDue, REPEAT_LABEL } from "./dom";
 import { openEditor } from "./editor";
 import { renderJourney } from "./journey";
 import { inviteCard } from "./moments";
@@ -84,7 +84,6 @@ function renderHud(t: string): void {
 function renderNow(box: HTMLElement, t: string): void {
   const invite = inviteCard(t);
   if (invite) box.append(invite);
-  box.append(moodCard(t));
   const v = nowView(S.quests, t);
   if (v.overdue.length) section(box, "Overdue — no guilt, just pick one", v.overdue, { cls: "overdue", t });
   section(box, "Today", v.today, {
@@ -135,54 +134,6 @@ function renderLoot(box: HTMLElement): void {
     grid.append(d);
   }
   box.append(grid);
-}
-
-function moodCard(t: string): HTMLElement {
-  const last = S.moods.filter((m) => m.day === t).at(-1);
-  const card = el("div", "mood-card");
-
-  const head = el("div", "mood-head");
-  head.append(el("b", "", last ? "Today's mood" : "How are you right now?"));
-  head.append(
-    el(
-      "span",
-      "hint",
-      last ? `Checked in ${fmtClock(last.at)}. Tap to update.` : `+${MOOD_XP} XP for any honest answer.`,
-    ),
-  );
-  card.append(head);
-
-  const row = el("div", "mood-row");
-  for (const m of MOODS) {
-    const current = !!last && last.v === m.v;
-    const b = el("button", "mood-btn" + (current ? " on" : ""), String(m.v));
-    b.setAttribute("aria-pressed", String(current));
-    b.type = "button";
-    b.setAttribute("aria-label", `${m.v} out of 10, ${m.label}`);
-    b.title = m.label;
-    b.style.setProperty("--lvl", String((m.v - 1) / 9));
-    b.onclick = () => logMood(m.v);
-    row.append(b);
-  }
-  card.append(row);
-
-  const ends = el("div", "mood-ends");
-  ends.append(
-    el("span", "", "1 · can always go lower"),
-    el("span", "now-label", last ? `${last.v} · ${moodLabel(last.v)}` : ""),
-    el("span", "", "10 · theoretical"),
-  );
-  card.append(ends);
-  if (last && last.v <= MOOD_LOW) {
-    card.append(
-      el(
-        "p",
-        "mood-care",
-        "Thanks for being honest. On days like this, one tiny quest is plenty: water, food, or a few minutes outside with Bash. If it gets heavy, call or text 988.",
-      ),
-    );
-  }
-  return card;
 }
 
 export function render(): void {

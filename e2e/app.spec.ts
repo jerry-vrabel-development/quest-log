@@ -1,5 +1,7 @@
 // End-to-end: the PWA on its own (offline mode, localStorage only), in a real browser.
+import { logMood } from "./helpers";
 import { expect, test, type Page } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 
 declare global {
   interface Window {
@@ -109,21 +111,45 @@ test("with reduced motion, the chest opens without animating", async ({ page }) 
   await expect(page.locator("canvas.confetti")).toHaveCount(0);
 });
 
-test("a mood check-in earns XP once per day and shows on the card", async ({ page }) => {
-  page.on("dialog", (d) => d.accept("slept ok"));
-  await page.getByRole("button", { name: "6 out of 10, Okay" }).click();
+test("a check-in earns XP once per day, and Now never shows it back to you", async ({ page }) => {
+  await logMood(page, "2 out of 10, Awful", { note: "slept badly" });
   await collect(page); // Honest Check-in badge
-  await expect(page.locator(".mood-card .now-label")).toHaveText("6 · Okay");
   await expect(page.locator("#xp")).toHaveText("5 XP · 5/50 to next");
-  await page.getByRole("button", { name: "7 out of 10, Decent" }).click();
-  await expect(page.locator(".mood-card .now-label")).toHaveText("7 · Decent");
+  // A 2 shouldn't follow you around all day: nothing on Now (or the progress panel) repeats it.
+  await page.getByRole("tab", { name: "Now" }).click();
+  for (const area of [page.locator(".hud"), page.locator("#view")])
+    for (const text of ["Awful", "2/10", "2 ·", "Today's mood", "slept badly"])
+      await expect(area).not.toContainText(text);
+  await logMood(page, "7 out of 10, Decent");
   await expect(page.locator("#xp")).toHaveText("5 XP · 5/50 to next");
+  // The record keeps both, in Journey.
+  await page.getByRole("tab", { name: "Journey" }).click();
+  await expect(page.locator(".log")).toContainText("Mood 2/10 · Awful · slept badly");
+  await expect(page.locator(".log")).toContainText("Mood 7/10 · Decent");
 });
 
-test("a low mood shows the gentle note, and the first quest after it is a hard-day jackpot", async ({ page }) => {
-  page.on("dialog", (d) => d.accept(""));
-  await page.getByRole("button", { name: "3 out of 10, Rough" }).click();
-  await expect(page.locator(".mood-care")).toBeVisible();
+test("the Log needs only a mood; extras are optional, in words, and land in Journey", async ({ page }) => {
+  await page.getByRole("button", { name: "📝 Log" }).click();
+  const dlg = page.locator("#logDialog");
+  await dlg.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(dlg.getByRole("alert")).toHaveText("Pick a mood number first. That's all it needs.");
+  await dlg.getByRole("button", { name: "Cancel" }).click();
+  await expect(dlg).toBeHidden();
+  await expect(page.locator("#xp")).toHaveText("0 XP · 0/50 to next"); // nothing was logged
+
+  await logMood(page, "4 out of 10, Low", {
+    steps: ["Anxiety: High", "Energy: Empty", "Focus: Scattered", "Focus: Scattered"], // tap twice = clear
+    sleep: "4 hours, woke at 3",
+  });
+  await collect(page);
+  await page.getByRole("tab", { name: "Journey" }).click();
+  const log = page.locator(".log");
+  await expect(log).toContainText("Mood 4/10 · Low · Anxiety: High · Energy: Empty · Sleep: 4 hours, woke at 3");
+  await expect(log).not.toContainText("Focus");
+});
+
+test("the first quest after a low check-in is a hard-day jackpot", async ({ page }) => {
+  await logMood(page, "3 out of 10, Rough");
   await collect(page);
   await page.getByLabel("Complete Check off this quest").click();
   const chest = page.getByRole("dialog");
@@ -133,8 +159,7 @@ test("a low mood shows the gentle note, and the first quest after it is a hard-d
 
 test.describe("editing a mood check-in", () => {
   test.beforeEach(async ({ page }) => {
-    page.on("dialog", (d) => d.accept("slept ok"));
-    await page.getByRole("button", { name: "6 out of 10, Okay" }).click();
+    await logMood(page, "6 out of 10, Okay", { note: "slept ok" });
     await collect(page); // Honest Check-in badge
     await page.getByRole("tab", { name: "Journey" }).click();
     await page.getByRole("button", { name: /Edit mood check-in at/ }).click();
@@ -150,8 +175,6 @@ test.describe("editing a mood check-in", () => {
     await expect(editor).toBeHidden();
     await expect(page.locator(".log")).toContainText("Mood 4/10 · Low · actually pretty rough");
     await expect(page.locator("#xp")).toHaveText("5 XP · 5/50 to next");
-    await page.getByRole("tab", { name: "Now" }).click();
-    await expect(page.locator(".mood-card .now-label")).toHaveText("4 · Low");
   });
 
   test("delete takes two taps and gives the day's XP back", async ({ page }) => {
@@ -194,7 +217,7 @@ test("coming back after a break is celebrated, and the ended streak is honored",
 
   // Any first step back counts, a mood check-in included.
   page.on("dialog", (d) => d.accept(""));
-  await page.getByRole("button", { name: "5 out of 10, Meh" }).click();
+  await logMood(page, "5 out of 10, Meh");
   const chest = page.getByRole("dialog");
   await expect(chest.locator(".chest-title")).toHaveText("Comeback! Welcome back.");
   await expect(chest).toContainText("Your 5-day streak is in the record, your second-longest.");
@@ -293,4 +316,28 @@ test.describe("opening screen", () => {
     await page.reload();
     await expect(page.locator("#splash")).toBeHidden();
   });
+});
+
+test("a GIF can say it instead: kept as a GIF, shown with the check-in in Journey", async ({ page }) => {
+  const gif = fileURLToPath(new URL("fixtures/mood.gif", import.meta.url));
+  await logMood(page, "5 out of 10, Meh", { picture: gif });
+  await collect(page);
+  await page.getByRole("tab", { name: "Journey" }).click();
+  const pic = page.locator(".log .log-pic");
+  await expect(pic).toHaveAttribute("alt", /^Picture with your check-in at /);
+  await expect.poll(() => pic.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(96);
+  // Stored as the original GIF (so it still moves), not flattened to a JPEG.
+  const type = await page.evaluate(
+    () =>
+      new Promise<string>((resolve) => {
+        const open = indexedDB.open("quest-log-media");
+        open.onsuccess = () => {
+          const all = open.result.transaction("photos").objectStore("photos").getAll();
+          all.onsuccess = () => {
+            resolve((all.result as Blob[]).map((b) => b.type).join(","));
+          };
+        };
+      }),
+  );
+  expect(type).toBe("image/gif");
 });

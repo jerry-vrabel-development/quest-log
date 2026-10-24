@@ -3,6 +3,7 @@
  * logging a mood does to the state. Pure functions over a State object, used by both
  * the app and the MCP server so the two can never disagree.
  */
+import type { Extras } from "./checkin";
 import { addDays, nextOccurrence } from "./dates";
 import type { LogEvent, LootItem, Quest, Rarity, State, When } from "./types";
 
@@ -188,10 +189,11 @@ export function recordMood(
   v: number,
   note: string,
   { today, now, via }: When & { via?: string },
+  extras: Extras & { media?: string } = {},
 ): { first: boolean; xp: number } {
   const first = !S.moods.some((m) => m.day === today);
   const xp = first ? MOOD_XP : 0;
-  const extra = via ? { via } : {};
+  const extra = { ...extras, ...(via ? { via } : {}) };
   S.moods.push({ at: now, day: today, v, s: 10, note, ...extra });
   logEvent(S, { t: "mood", v, s: 10, note, xp, ...extra }, { today, now });
   addXp(S, xp, today);

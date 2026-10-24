@@ -1,5 +1,6 @@
 // Moments: capture a photo, video, song, recording or movie when it's good; it comes back as a memory drop when it's not.
 import AxeBuilder from "@axe-core/playwright";
+import { logMood } from "./helpers";
 import { expect, test, type Page } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 
@@ -119,7 +120,7 @@ test("a song moment needs a name or link, and links show where they're from", as
 });
 
 test("after a good check-in, the app invites saving the moment (once a day)", async ({ page }) => {
-  await page.getByRole("button", { name: "8 out of 10, Good" }).click();
+  await logMood(page, "8 out of 10, Good");
   await page.getByRole("button", { name: "Collect" }).click();
   const invite = page.getByRole("region", { name: "Save this moment" });
   await expect(invite).toBeVisible();
@@ -128,7 +129,7 @@ test("after a good check-in, the app invites saving the moment (once a day)", as
   await page.keyboard.press("Escape");
   await invite.getByRole("button", { name: "Not now" }).click();
   await expect(invite).toBeHidden();
-  await page.getByRole("button", { name: "9 out of 10, Great" }).click(); // still dismissed for today
+  await logMood(page, "9 out of 10, Great"); // still dismissed for today
   await expect(page.getByRole("region", { name: "Save this moment" })).toBeHidden();
 });
 
@@ -136,7 +137,7 @@ test("on a hard day, a photo you saved comes back front and center", async ({ pa
   await addPhotoMoment(page, "Bash at the lake");
   await ageMoments(page);
   await page.getByRole("tab", { name: "Now" }).click();
-  await page.getByRole("button", { name: "3 out of 10, Rough" }).click(); // first check-in: badge chest
+  await logMood(page, "3 out of 10, Rough"); // first check-in: badge chest
   const memory = page.locator(".chest-overlay .chest-memory");
   await expect(memory).toContainText("A photo from your day");
   await expect(memory).toContainText("Bash at the lake");
@@ -158,11 +159,11 @@ test("outside a jackpot, a moment memory opens full screen", async ({ page }) =>
   await ageMoments(page);
 
   // First low check-in: the badge chest carries one moment...
-  await page.getByRole("button", { name: "3 out of 10, Rough" }).click();
+  await logMood(page, "3 out of 10, Rough");
   const inChest = (await page.locator(".chest-memory b").textContent()) ?? "";
   await page.getByRole("button", { name: "Collect" }).click();
   // ...a second one (no XP, not a jackpot) still brings back the other, full screen.
-  await page.getByRole("button", { name: "3 out of 10, Rough" }).click();
+  await logMood(page, "3 out of 10, Rough");
   const pop = page.locator("#memoryPop");
   await expect(pop).toBeVisible();
   await expect(pop.locator("#memoryPopLabel")).toContainText("From your record");
@@ -261,7 +262,7 @@ test("on a hard day, a song you saved comes back ready to play, and the chest st
   await dlg.getByRole("button", { name: "Save moment" }).click();
   await expect(dlg).toBeHidden(); // saved (file and moment) before we touch storage and reload
   await ageMoments(page);
-  await page.getByRole("button", { name: "3 out of 10, Rough" }).click(); // badge chest, with the song inside
+  await logMood(page, "3 out of 10, Rough"); // badge chest, with the song inside
   const chest = page.locator(".chest-overlay");
   await expect(chest).toHaveClass(/opened/);
   const audio = chest.locator(".chest-memory audio");
@@ -316,7 +317,7 @@ test("on a hard day, a video you saved comes back in the chest, ready to play", 
   await dlg.getByRole("button", { name: "Save moment" }).click();
   await expect(dlg).toBeHidden();
   await ageMoments(page);
-  await page.getByRole("button", { name: "3 out of 10, Rough" }).click(); // badge chest, with the video inside
+  await logMood(page, "3 out of 10, Rough"); // badge chest, with the video inside
   const chest = page.locator(".chest-overlay");
   await expect(chest.locator(".chest-memory")).toContainText("A video from your day");
   const video = chest.locator(".chest-memory video");
@@ -358,4 +359,14 @@ test("a small 720p clip is saved as it is", async ({ page }) => {
   const dlg = await addVideoMoment(page, CLIP, "small already");
   await playable(dlg.locator("#momentVideoPreview"));
   await expect(dlg.locator("#videoStatus")).toHaveText("");
+});
+
+test("Cancel closes the moment dialog without saving anything", async ({ page }) => {
+  await page.getByRole("tab", { name: "Journey" }).click();
+  await page.getByRole("button", { name: "Add a moment" }).click();
+  const dlg = page.locator("#momentDialog");
+  await dlg.getByLabel("Caption").fill("not this one");
+  await dlg.getByRole("button", { name: "Cancel" }).click();
+  await expect(dlg).toBeHidden();
+  await expect(page.locator(".moments")).toHaveCount(0);
 });

@@ -76,3 +76,7 @@ export function download(text: string, filename: string, type: string): void {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
+
+/** A dialog form's submit came from its Cancel button (value="cancel"), not Save. */
+export const isCancel = (e: SubmitEvent): boolean =>
+  e.submitter instanceof HTMLButtonElement && e.submitter.value === "cancel";

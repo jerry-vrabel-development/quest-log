@@ -17,6 +17,7 @@ import { initSessionSounds } from "./session";
 import { applyTheme, initSettings } from "./settings";
 import { load, today } from "./store";
 import { initBackup } from "./backup";
+import { initLog } from "./log";
 import { initSync, pullState } from "./sync";
 
 const REMINDER_POLL_MS = 30_000;
@@ -27,6 +28,7 @@ initReminders();
 initSettings();
 initSync();
 initBackup();
+initLog();
 initChartTooltips();
 initDice();
 initMoodEditor();

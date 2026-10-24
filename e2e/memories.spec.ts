@@ -1,5 +1,6 @@
 // Memory drops: rewards made from your own record, and notes from past you.
 import AxeBuilder from "@axe-core/playwright";
+import { logMood } from "./helpers";
 import { expect, test, type Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
@@ -47,7 +48,7 @@ async function noAxeViolations(page: Page) {
 
 test("on a hard day, a note from past you comes back", async ({ page }) => {
   await seedHistory(page, ["You've come back before. You will again."]);
-  await page.getByRole("button", { name: "3 out of 10, Rough" }).click();
+  await logMood(page, "3 out of 10, Rough");
   // The first check-in earns a badge, which opens the chest; the memory rides along inside it.
   const chest = page.locator(".chest-overlay");
   await expect(chest.locator(".chest-memory")).toContainText("A note from you");
@@ -88,7 +89,7 @@ test("an ordinary quest can bring back earlier wins in the same area, as a toast
 
 test("memories don't repeat right away", async ({ page }) => {
   await seedHistory(page, ["Only note"]);
-  await page.getByRole("button", { name: "3 out of 10, Rough" }).click();
+  await logMood(page, "3 out of 10, Rough");
   await expect(page.locator(".chest-memory")).toContainText("Only note");
   await page.getByRole("button", { name: "Collect" }).click();
   const seen = await page.evaluate(

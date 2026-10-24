@@ -1,6 +1,7 @@
 // Accessibility: an axe-core scan (WCAG 2.2 A/AA + best practices) of every view and dialog in light
 // and dark mode, plus keyboard checks that automated scanners can't do. Any violation fails CI.
 import AxeBuilder from "@axe-core/playwright";
+import { logMood } from "./helpers";
 import { expect, test, type Page } from "@playwright/test";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
@@ -31,7 +32,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       // Some history so every view has content: a quest, a mood check-in, loot and badges.
       await page.getByLabel("Complete Check off this quest").click();
       await page.getByRole("button", { name: "Collect" }).click();
-      await page.getByRole("button", { name: "6 out of 10, Okay" }).click();
+      await logMood(page, "6 out of 10, Okay");
       await page.getByRole("button", { name: "Collect" }).click();
       for (const view of ["Now", "Upcoming", "All", "Loot", "Journey"]) {
         await page.getByRole("tab", { name: view }).click();
@@ -69,7 +70,13 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expectNoViolations(page, `Frozen? dice (${colorScheme})`);
       await page.getByRole("button", { name: "Close" }).click();
 
-      await page.getByRole("button", { name: "6 out of 10, Okay" }).click();
+      await page.getByRole("button", { name: "📝 Log" }).click();
+      const log = page.locator("#logDialog");
+      await log.getByRole("button", { name: "6 out of 10, Okay" }).click();
+      await log.getByText("More: anxiety, energy, body, focus, sleep, pain").click();
+      await log.getByRole("button", { name: "Energy: Low" }).click();
+      await expectNoViolations(page, `Log (${colorScheme})`);
+      await log.getByRole("button", { name: "Save", exact: true }).click();
       await page.getByRole("button", { name: "Collect" }).click();
       await page.getByRole("tab", { name: "Journey" }).click();
       await page.getByRole("button", { name: /Edit mood check-in/ }).click();
@@ -165,11 +172,17 @@ test.describe("keyboard", () => {
     expect(top).toBeGreaterThanOrEqual(hudBottom);
   });
 
-  test("the mood card says which number is current", async ({ page }) => {
+  test("the Log says which choices are picked, without relying on color", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "7 out of 10, Decent" }).click();
-    await page.getByRole("button", { name: "Collect" }).click();
-    await expect(page.getByRole("button", { name: "7 out of 10, Decent" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "6 out of 10, Okay" })).toHaveAttribute("aria-pressed", "false");
+    await page.getByRole("button", { name: "📝 Log" }).click();
+    const dlg = page.locator("#logDialog");
+    await dlg.getByRole("button", { name: "7 out of 10, Decent" }).click();
+    await expect(dlg.getByRole("button", { name: "7 out of 10, Decent" })).toHaveAttribute("aria-pressed", "true");
+    await expect(dlg.getByRole("button", { name: "6 out of 10, Okay" })).toHaveAttribute("aria-pressed", "false");
+    await dlg.getByText("More: anxiety, energy, body, focus, sleep, pain").click();
+    const calm = dlg.getByRole("button", { name: "Anxiety: Calm" });
+    await calm.click();
+    await expect(calm).toHaveAttribute("aria-pressed", "true");
+    await expect(calm).toHaveText("✓ Calm"); // a check mark, not just a fill
   });
 });

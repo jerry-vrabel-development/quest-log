@@ -525,20 +525,7 @@ legend {
   gap: 6px;
 }
 
-/* ---------- mood check-in ---------- */
-.mood-card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 14px;
-  margin-top: 14px;
-}
-.mood-head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 10px;
-}
+/* ---------- the Log (check-ins) ---------- */
 .mood-row {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
@@ -573,18 +560,95 @@ legend {
   font-size: 0.72rem;
   color: var(--muted);
 }
-.mood-ends .now-label {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.8rem;
+.hud-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
 }
-.mood-care {
-  margin: 10px 0 0;
-  font-size: 0.88rem;
-  color: var(--ink);
-  background: var(--accent-soft);
+.hud-actions .freeze {
+  margin-top: 0;
+  flex: 1;
+}
+.log-btn {
+  flex: none;
+  padding: 12px 18px;
   border-radius: 10px;
+  border: 2px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.log-btn:hover {
+  filter: brightness(1.08);
+}
+#logDialog {
+  width: min(520px, calc(100% - 24px));
+}
+#logDialog form {
+  gap: 12px;
+}
+.log-mood,
+.log-scale {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.log-mood legend,
+.log-scale legend {
+  font-weight: 700;
+  margin-bottom: 6px;
+  padding: 0;
+}
+.log-more {
+  border: 1px solid var(--line);
+  border-radius: 12px;
   padding: 10px 12px;
+}
+.log-more summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.log-more[open] summary {
+  margin-bottom: 10px;
+}
+.log-more > label,
+.log-scale {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+.log-steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+.log-step {
+  padding: 8px 2px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: clamp(0.7rem, 3vw, 0.8rem);
+  line-height: 1.15;
+  cursor: pointer;
+  min-width: 0;
+}
+/* Chosen = solid fill AND a thicker border AND a check mark: never color alone. */
+.log-step.on {
+  border: 2px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+.log-pic {
+  display: block;
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 8px;
+  margin: 4px 0;
 }
 
 /* ---------- journey ---------- */

@@ -4,7 +4,9 @@
  */
 import { deleteMood, editMood, NOTE_MAX } from "../core/moods";
 import { MOODS } from "../core/rules";
+import { removeBackup } from "./backup";
 import { $, el, fmtClock, fmtDay } from "./dom";
+import { deleteMedia } from "./media";
 import { render } from "./render";
 import { S, save } from "./store";
 import { toast } from "./toast";
@@ -56,7 +58,12 @@ function remove(): void {
     armDelete(true);
     return;
   }
+  const media = S.moods.find((m) => m.at === editing)?.media;
   const result = deleteMood(S, editing);
+  if (media) {
+    void deleteMedia(media);
+    void removeBackup(media);
+  }
   save();
   render();
   dialog().close();

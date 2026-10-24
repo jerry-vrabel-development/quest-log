@@ -60,7 +60,7 @@ export interface PendingReward {
   at: number;
 }
 
-export type MomentKind = "photo" | "song" | "movie";
+export type MomentKind = "photo" | "song" | "movie" | "recording";
 
 /** Something to remember a day by. A photo's image is stored on the device under the moment id. */
 export interface Moment {
@@ -77,6 +77,8 @@ export interface Moment {
   source?: string;
   /** Quest category, so finishing a quest in that area can bring it back. */
   area?: string;
+  /** A song with its music file attached, stored on the device under the moment id (recordings always are). */
+  audio?: boolean;
 }
 
 export interface State {

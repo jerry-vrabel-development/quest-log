@@ -102,7 +102,11 @@ function openChest(reasons: string[], item: LootItem | null, memory: Memory | nu
     overlay.remove();
     if (open === overlay) open = null;
   });
-  overlay.addEventListener("click", () => {
+  // Tap outside the card (or Collect, or Esc) to close; taps inside can play audio or open a link.
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.close();
+  });
+  collect.addEventListener("click", () => {
     overlay.close();
   });
   overlay.showModal();

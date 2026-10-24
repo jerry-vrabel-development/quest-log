@@ -77,7 +77,7 @@ test("a song moment needs a name or link, and links show where they're from", as
   const dlg = page.locator("#momentDialog");
   await dlg.getByLabel("🎵 Song").check();
   await dlg.getByRole("button", { name: "Save moment" }).click();
-  await expect(dlg.getByRole("alert")).toHaveText("Add the song's name or a link.");
+  await expect(dlg.getByRole("alert")).toHaveText("Add the song's name, a link, or a music file.");
   await dlg.getByLabel("Song name").fill("Harvest Moon");
   await dlg.getByLabel(/^Link/).fill("https://open.spotify.com/track/abc");
   await noAxeViolations(page);
@@ -141,4 +141,99 @@ test("outside a jackpot, a moment memory opens full screen", async ({ page }) =>
   await noAxeViolations(page);
   await pop.getByRole("button", { name: "Close" }).click();
   await expect(pop).toBeHidden();
+});
+
+/** One second of a 440 Hz tone as a WAV file, standing in for a local music file. */
+function toneWav(): Buffer {
+  const rate = 8000;
+  const samples = rate;
+  const data = Buffer.alloc(samples * 2);
+  for (let i = 0; i < samples; i++)
+    data.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 8000), i * 2);
+  const h = Buffer.alloc(44);
+  h.write("RIFF", 0);
+  h.writeUInt32LE(36 + data.length, 4);
+  h.write("WAVEfmt ", 8);
+  h.writeUInt32LE(16, 16);
+  h.writeUInt16LE(1, 20);
+  h.writeUInt16LE(1, 22);
+  h.writeUInt32LE(rate, 24);
+  h.writeUInt32LE(rate * 2, 28);
+  h.writeUInt16LE(2, 32);
+  h.writeUInt16LE(16, 34);
+  h.write("data", 36);
+  h.writeUInt32LE(data.length, 40);
+  return Buffer.concat([h, data]);
+}
+
+const playable = (audio: ReturnType<Page["locator"]>) =>
+  expect
+    .poll(() => audio.evaluate((a: HTMLAudioElement) => (Number.isFinite(a.duration) ? a.duration : 0)), {
+      timeout: 20_000,
+    })
+    .toBeGreaterThan(0);
+
+test("a song can carry its local music file, which plays back from Journey", async ({ page }) => {
+  await page.getByRole("tab", { name: "Journey" }).click();
+  await page.getByRole("button", { name: "Add a moment" }).click();
+  const dlg = page.locator("#momentDialog");
+  await dlg.getByLabel("🎵 Song").check();
+  await dlg
+    .getByLabel(/^Music file/)
+    .setInputFiles({ name: "01 - Harvest_Moon.wav", mimeType: "audio/wav", buffer: toneWav() });
+  await expect(dlg.getByLabel("Song name")).toHaveValue("Harvest Moon"); // guessed from the file name
+  await playable(dlg.locator("#momentAudioPreview"));
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  const audio = page.locator(".moments audio");
+  await expect(audio).toHaveAttribute("aria-label", "Play Harvest Moon");
+  await playable(audio);
+  expect(await audio.evaluate((a: HTMLAudioElement) => a.autoplay)).toBe(false);
+  await noAxeViolations(page);
+});
+
+test("a recording made in the app is saved and plays back", async ({ page }) => {
+  await page.getByRole("tab", { name: "Journey" }).click();
+  await page.getByRole("button", { name: "Add a moment" }).click();
+  const dlg = page.locator("#momentDialog");
+  await dlg.getByLabel("🎙️ Recording").check();
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  await expect(dlg.getByRole("alert")).toHaveText("Record something first.");
+  const rec = dlg.locator("#recordBtn");
+  await rec.click();
+  await expect(rec).toHaveAttribute("aria-pressed", "true");
+  await page.waitForTimeout(1200);
+  await rec.click();
+  await expect(dlg.locator("#recordStatus")).toHaveText("Recorded. Play it back, or record again.");
+  await expect(dlg.locator("#recordPreview")).toBeVisible();
+  await dlg.getByLabel(/^What is it/).fill("the new riff");
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  await expect(dlg).toBeHidden();
+  await expect(page.locator(".moments")).toContainText("🎙️ the new riff");
+  await expect(page.locator(".moments audio")).toHaveAttribute("aria-label", "Play your recording: the new riff");
+  await expect.poll(() => page.locator(".moments audio").evaluate((a: HTMLAudioElement) => a.src)).toMatch(/^blob:/);
+});
+
+test("on a hard day, a song you saved comes back ready to play, and the chest stays open while you listen", async ({
+  page,
+}) => {
+  // This test is about audio, so skip the chest's animation and confetti (they compete for CPU in parallel runs).
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("tab", { name: "Journey" }).click();
+  await page.getByRole("button", { name: "Add a moment" }).click();
+  const dlg = page.locator("#momentDialog");
+  await dlg.getByLabel("🎵 Song").check();
+  await dlg
+    .getByLabel(/^Music file/)
+    .setInputFiles({ name: "harvest-moon.wav", mimeType: "audio/wav", buffer: toneWav() });
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  await ageMoments(page);
+  await page.getByRole("button", { name: "3 out of 10, Rough" }).click(); // badge chest, with the song inside
+  const chest = page.locator(".chest-overlay");
+  await expect(chest).toHaveClass(/opened/);
+  const audio = chest.locator(".chest-memory audio");
+  await playable(audio);
+  await audio.click(); // interacting inside the card doesn't close the chest
+  await expect(chest).toBeVisible();
+  await chest.getByRole("button", { name: "Collect" }).click();
+  await expect(chest).toHaveCount(0);
 });

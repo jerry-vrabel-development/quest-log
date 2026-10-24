@@ -203,7 +203,7 @@
       </form>
     </dialog>
 
-    <!-- Add a moment: a photo, a song, a movie -->
+    <!-- Add a moment: a photo, a song, a movie, a recording -->
     <dialog id="momentDialog" aria-labelledby="momentTitle">
       <form method="dialog" id="momentForm">
         <h2 id="momentTitle">Save a moment</h2>
@@ -212,16 +212,33 @@
           <legend>What is it?</legend>
           <label class="kind"><input type="radio" name="kind" value="photo" checked /> 📷 Photo</label>
           <label class="kind"><input type="radio" name="kind" value="song" /> 🎵 Song</label>
+          <label class="kind"><input type="radio" name="kind" value="recording" /> 🎙️ Recording</label>
           <label class="kind"><input type="radio" name="kind" value="movie" /> 🎞️ Movie or show</label>
         </fieldset>
-        <div class="moment-photo">
+        <div class="moment-section" data-for="photo">
           <label>Photo<input type="file" id="momentFile" accept="image/*" /></label>
           <img id="momentPreview" class="moment-preview" alt="" hidden />
         </div>
-        <div class="moment-link" hidden>
-          <label><span id="momentTitleLabel">Song name</span><input id="momentTitleInput" maxlength="120" /></label>
+        <div class="moment-section" data-for="song" hidden>
           <label
-            >Link <span class="hint">(optional: Spotify, YouTube, IMDb, …)</span
+            >Music file <span class="hint">(optional: a song from your phone or computer, up to 25 MB)</span
+            ><input type="file" id="momentAudioFile" accept="audio/*"
+          /></label>
+          <audio id="momentAudioPreview" class="moment-audio" controls preload="metadata" hidden></audio>
+        </div>
+        <div class="moment-section" data-for="recording" hidden>
+          <div class="record-row">
+            <button type="button" class="btn" id="recordBtn">● Record</button>
+            <span class="record-status" id="recordStatus" aria-live="polite">Up to 2 minutes.</span>
+          </div>
+          <audio id="recordPreview" class="moment-audio" controls hidden></audio>
+        </div>
+        <div class="moment-section" data-for="song movie recording" hidden>
+          <label><span id="momentTitleLabel">Song name</span><input id="momentTitleInput" maxlength="120" /></label>
+        </div>
+        <div class="moment-section" data-for="song movie" hidden>
+          <label
+            >Link <span class="hint">(optional: YouTube, Bandcamp, IMDb, …)</span
             ><input id="momentLink" type="url" inputmode="url" placeholder="https://"
           /></label>
         </div>

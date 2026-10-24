@@ -1530,14 +1530,33 @@ legend {
 #momentDialog {
   overflow: auto;
 }
-.moment-photo,
-.moment-link {
+.moment-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.moment-photo[hidden],
-.moment-link[hidden] {
+.moment-section[hidden] {
+  display: none;
+}
+.record-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.record-row .btn[aria-pressed="true"] {
+  background: var(--warn);
+}
+.record-status {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.moment-audio {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+.moment-audio[hidden] {
   display: none;
 }
 .moment-preview,

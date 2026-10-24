@@ -203,7 +203,7 @@
       </form>
     </dialog>
 
-    <!-- Add a moment: a photo, a song, a movie, a recording -->
+    <!-- Add a moment: a photo, a video, a song, a recording, a movie -->
     <dialog id="momentDialog" aria-labelledby="momentTitle">
       <form method="dialog" id="momentForm">
         <h2 id="momentTitle">Save a moment</h2>
@@ -211,6 +211,7 @@
         <fieldset class="moment-kinds">
           <legend>What is it?</legend>
           <label class="kind"><input type="radio" name="kind" value="photo" checked /> 📷 Photo</label>
+          <label class="kind"><input type="radio" name="kind" value="video" /> 🎬 Video</label>
           <label class="kind"><input type="radio" name="kind" value="song" /> 🎵 Song</label>
           <label class="kind"><input type="radio" name="kind" value="recording" /> 🎙️ Recording</label>
           <label class="kind"><input type="radio" name="kind" value="movie" /> 🎞️ Movie or show</label>
@@ -218,6 +219,13 @@
         <div class="moment-section" data-for="photo">
           <label>Photo<input type="file" id="momentFile" accept="image/*" /></label>
           <img id="momentPreview" class="moment-preview" alt="" hidden />
+        </div>
+        <div class="moment-section" data-for="video" hidden>
+          <label
+            >Video <span class="hint">(up to a minute: pick a clip or shoot one)</span
+            ><input type="file" id="momentVideoFile" accept="video/*"
+          /></label>
+          <video id="momentVideoPreview" class="moment-video" controls preload="metadata" playsinline hidden></video>
         </div>
         <div class="moment-section" data-for="song" hidden>
           <label

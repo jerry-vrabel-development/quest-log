@@ -1,10 +1,11 @@
 /**
- * Moments: a photo, the song you were listening to, the movie you watched, each with a caption.
+ * Moments: a photo, a short video, the song you were listening to, a recording, the movie you
+ * watched, each with a caption.
  * Capture them when things are good; memory drops bring them back when they're not.
  *
- * The state holds each moment's details (small, and synced). A photo's image lives in the
- * device's own storage, keyed by the moment id; a moment whose image isn't on this device is
- * simply skipped by memory drops.
+ * The state holds each moment's details (small, and synced). Files (photos, videos, music,
+ * recordings) live in the device's own storage, keyed by the moment id; a moment whose file isn't
+ * on this device is simply skipped by memory drops.
  */
 import type { Moment, MomentKind, State } from "./types";
 
@@ -14,6 +15,9 @@ export const TITLE_MAX = 120;
 export const AUDIO_MAX_BYTES = 25 * 1024 * 1024;
 /** Longest in-app recording. */
 export const RECORD_MAX_SECONDS = 120;
+/** A video moment is a short clip: up to a minute and 100 MB, so a phone video fits and storage doesn't fill up. */
+export const VIDEO_MAX_SECONDS = 60;
+export const VIDEO_MAX_BYTES = 100 * 1024 * 1024;
 
 export interface LinkInfo {
   url: string;
@@ -57,13 +61,16 @@ export interface MomentInput {
   area?: string;
   /** A music file is attached (songs) or a recording was made (recordings). */
   audio?: boolean;
+  /** A video file is attached (videos). */
+  video?: boolean;
 }
 
 const clip = (s: string | undefined, max: number) => (s ?? "").trim().slice(0, max);
 
 /**
  * Builds a moment from what the user entered, or explains what's missing.
- * Photos need nothing else (the image is stored separately); songs and movies need a title or a link.
+ * Photos need nothing else (the image is stored separately); videos need their file; songs and movies
+ * need a title or a link.
  */
 export function makeMoment(
   input: MomentInput,
@@ -75,6 +82,7 @@ export function makeMoment(
   const link = rawLink ? parseLink(rawLink) : null;
   if (rawLink && !link) return { error: "That link doesn't look right. It should start with https://" };
   if (input.kind === "recording" && !input.audio) return { error: "Record something first." };
+  if (input.kind === "video" && !input.video) return { error: "Choose a video first." };
   if ((input.kind === "song" || input.kind === "movie") && !title && !link && !input.audio) {
     return {
       error: input.kind === "song" ? "Add the song's name, a link, or a music file." : "Add the title or a link.",
@@ -104,6 +112,7 @@ export function deleteMoment(S: State, id: string): void {
 export function describeMoment(m: Moment): { headline: string; detail: string } {
   const what =
     m.kind === "photo" ? "A photo from your day"
+    : m.kind === "video" ? "A video from your day"
     : m.kind === "song" ? `You were listening to ${m.title ?? "this"}`
     : m.kind === "recording" ?
       m.title ?
@@ -113,15 +122,27 @@ export function describeMoment(m: Moment): { headline: string; detail: string } 
   return { headline: what, detail: m.caption };
 }
 
-/** Whether the moment carries a file (photo or audio) stored on the device that saved it. */
-export const hasMedia = (m: Moment): boolean => m.kind === "photo" || m.kind === "recording" || m.audio === true;
+/** Kinds that are nothing without their file. */
+const FILE_KINDS: MomentKind[] = ["photo", "video", "recording"];
+
+/** Whether the moment carries a file (photo, video or audio) stored on the device that saved it. */
+export const hasMedia = (m: Moment): boolean => FILE_KINDS.includes(m.kind) || m.audio === true;
 
 /**
- * Whether a memory drop can show this moment on a device. Photos and recordings need their file;
- * a song whose music file isn't here still shows its title.
+ * Whether a memory drop can show this moment on a device. Photos, videos and recordings need their
+ * file; a song whose music file isn't here still shows its title.
  */
 export const canShow = (m: Moment, hasLocal: (id: string) => boolean): boolean =>
-  (m.kind !== "photo" && m.kind !== "recording") || hasLocal(m.id);
+  !FILE_KINDS.includes(m.kind) || hasLocal(m.id);
+
+/** Why a video can't be a moment, or null if it can. (Duration is read from the file by the app.) */
+export function videoProblem(bytes: number, seconds: number): string | null {
+  if (bytes > VIDEO_MAX_BYTES) return "That video is over 100 MB. Try a shorter clip.";
+  if (!Number.isFinite(seconds) || seconds <= 0) return "Couldn't play that video. Try another one.";
+  if (seconds > VIDEO_MAX_SECONDS + 0.5)
+    return `That video is ${String(Math.round(seconds))} seconds. Moments hold up to a minute: trim it first, or pick a shorter one.`;
+  return null;
+}
 
 /** "01 - Harvest_Moon.mp3" → "Harvest Moon": a title guessed from a music file's name. */
 export function titleFromFileName(name: string): string {

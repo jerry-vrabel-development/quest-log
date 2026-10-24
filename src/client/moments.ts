@@ -1,12 +1,13 @@
 /**
- * Moments in the app: save a photo, a song (with its music file, if you like), a recording or a
- * movie (capture when things are good), see them in Journey, and get them back as memory drops
+ * Moments in the app: save a photo, a short video, a song (with its music file, if you like), a
+ * recording or a movie (capture when things are good), see them in Journey, and get them back as memory drops
  * (replay when things aren't).
  */
 import type { Memory } from "../core/memories";
 import {
   AUDIO_MAX_BYTES,
   RECORD_MAX_SECONDS,
+  VIDEO_MAX_BYTES,
   addMoment,
   canShow,
   deleteMoment,
@@ -14,32 +15,43 @@ import {
   hasMedia,
   makeMoment,
   titleFromFileName,
+  videoProblem,
 } from "../core/moments";
 import type { Moment, MomentKind } from "../core/types";
 import { $, el, fmtDay } from "./dom";
-import { deleteMedia, hasLocalMedia, resizePhoto, saveMedia, showAudio, showPhoto } from "./media";
+import { deleteMedia, hasLocalMedia, resizePhoto, saveMedia, showPhoto, showPlayable, videoSeconds } from "./media";
 import { render } from "./render";
 import { S, save, today } from "./store";
 
 const dialog = () => $<HTMLDialogElement>("#momentDialog");
 const form = () => $<HTMLFormElement>("#momentForm");
-const KINDS: MomentKind[] = ["photo", "song", "recording", "movie"];
+const KINDS: MomentKind[] = ["photo", "video", "song", "recording", "movie"];
 const kindNow = (): MomentKind => {
   const v = form().querySelector<HTMLInputElement>('input[name="kind"]:checked')?.value;
   return KINDS.find((k) => k === v) ?? "photo";
 };
 const TITLE_LABEL: Record<MomentKind, string> = {
   photo: "",
+  video: "",
   song: "Song name",
   movie: "Title",
   recording: "What is it? (optional)",
 };
 
 /** The file chosen or recorded in the open dialog, for each kind that has one. */
-const picked: { photo: Blob | null; song: Blob | null; recording: Blob | null } = {
+const picked: { photo: Blob | null; video: Blob | null; song: Blob | null; recording: Blob | null } = {
   photo: null,
+  video: null,
   song: null,
   recording: null,
+};
+
+const FILE_NOUN: Record<MomentKind, string> = {
+  photo: "Photo",
+  video: "Video",
+  song: "Music file",
+  recording: "Recording",
+  movie: "File",
 };
 
 /** Memory drops can show a moment only if its photo or recording is on this device. */
@@ -53,11 +65,11 @@ function syncKind(): void {
   $("#momentTitleLabel").textContent = TITLE_LABEL[kind];
 }
 
-function setPreview(audio: HTMLAudioElement, blob: Blob | null): void {
-  if (audio.src) URL.revokeObjectURL(audio.src);
-  if (blob) audio.src = URL.createObjectURL(blob);
-  else audio.removeAttribute("src");
-  audio.hidden = !blob;
+function setPreview(player: HTMLMediaElement, blob: Blob | null): void {
+  if (player.src) URL.revokeObjectURL(player.src);
+  if (blob) player.src = URL.createObjectURL(blob);
+  else player.removeAttribute("src");
+  player.hidden = !blob;
 }
 
 /* ---------- recording ---------- */
@@ -118,12 +130,13 @@ function stopRecording(): void {
 /** Opens "Save a moment". With `invite`, it's the prompt after a good moment. */
 export function openMomentDialog({ invite = false }: { invite?: boolean } = {}): void {
   form().reset();
-  picked.photo = picked.song = picked.recording = null;
+  picked.photo = picked.video = picked.song = picked.recording = null;
   const preview = $<HTMLImageElement>("#momentPreview");
   preview.hidden = true;
   preview.removeAttribute("src");
   setPreview($<HTMLAudioElement>("#momentAudioPreview"), null);
   setPreview($<HTMLAudioElement>("#recordPreview"), null);
+  setPreview($<HTMLVideoElement>("#momentVideoPreview"), null);
   $("#recordBtn").textContent = "● Record";
   $("#recordStatus").textContent = "Up to 2 minutes.";
   $("#momentError").textContent = "";
@@ -146,11 +159,7 @@ async function onSubmit(e: SubmitEvent): Promise<void> {
     err.textContent = "Stop the recording first.";
     return;
   }
-  const file =
-    kind === "photo" ? picked.photo
-    : kind === "song" ? picked.song
-    : kind === "recording" ? picked.recording
-    : null;
+  const file = kind === "movie" ? null : picked[kind];
   if (kind === "photo" && !file) {
     err.textContent = "Choose a photo first.";
     return;
@@ -162,7 +171,8 @@ async function onSubmit(e: SubmitEvent): Promise<void> {
       title: $<HTMLInputElement>("#momentTitleInput").value,
       link: kind === "song" || kind === "movie" ? $<HTMLInputElement>("#momentLink").value : "",
       area: $<HTMLSelectElement>("#momentArea").value,
-      audio: !!file && kind !== "photo",
+      audio: !!file && (kind === "song" || kind === "recording"),
+      video: !!file && kind === "video",
     },
     { id: crypto.randomUUID(), today: today(), now: Date.now() },
   );
@@ -198,7 +208,7 @@ export function inviteCard(t: string): HTMLElement | null {
   card.setAttribute("aria-label", "Save this moment");
   card.append(
     el("b", "", "✨ A good moment. Save it?"),
-    el("span", "hint", "A photo, the song that's playing, a quick recording, what you're watching."),
+    el("span", "hint", "A photo or a quick video, the song that's playing, a recording, what you're watching."),
   );
   const add = el("button", "btn small", "Add a moment");
   add.type = "button";
@@ -229,8 +239,19 @@ function player(m: Moment): HTMLAudioElement {
     "aria-label",
     m.kind === "recording" ? `Play your recording${m.title ? `: ${m.title}` : ""}` : `Play ${m.title ?? "the song"}`,
   );
-  void showAudio(audio, m.id);
+  void showPlayable(audio, m.id);
   return audio;
+}
+
+/** A player for a video moment: never plays by itself, and stays in the page on phones (no forced full screen). */
+function videoPlayer(m: Moment): HTMLVideoElement {
+  const video = el("video", "moment-video");
+  video.controls = true;
+  video.preload = "metadata";
+  video.playsInline = true;
+  video.setAttribute("aria-label", `Play the video from ${fmtDay(m.day)}${m.caption ? `: ${m.caption}` : ""}`);
+  void showPlayable(video, m.id);
+  return video;
 }
 
 /** The photo, player, link card or title for a moment, into `box`. */
@@ -240,6 +261,10 @@ export function momentMedia(box: HTMLElement, m: Moment): void {
     img.alt = m.caption || `Photo from ${fmtDay(m.day)}`;
     box.append(img);
     void showPhoto(img, m.id);
+    return;
+  }
+  if (m.kind === "video") {
+    box.append(videoPlayer(m));
     return;
   }
   if (m.kind === "recording") {
@@ -288,7 +313,7 @@ export function momentsSection(box: HTMLElement): void {
       el(
         "div",
         "empty",
-        "Photos, songs, recordings and movies you save show up here, and come back on days you need them.",
+        "Photos, videos, songs, recordings and movies you save show up here, and come back on days you need them.",
       ),
     );
     return;
@@ -298,7 +323,7 @@ export function momentsSection(box: HTMLElement): void {
     const li = el("li", `moment moment-${m.kind}`);
     const media = el("div", "moment-media");
     if (canShow(m, hasLocalMedia)) momentMedia(media, m);
-    else media.append(el("span", "hint", `${m.kind === "photo" ? "Photo" : "Recording"} saved on another device`));
+    else media.append(el("span", "hint", `${FILE_NOUN[m.kind]} saved on another device`));
     const del = el("button", "note-del", "×");
     del.type = "button";
     del.setAttribute("aria-label", `Delete moment from ${fmtDay(m.day)}`);
@@ -351,6 +376,24 @@ export function initMoments(): void {
     setPreview($<HTMLAudioElement>("#momentAudioPreview"), file);
     const title = $<HTMLInputElement>("#momentTitleInput");
     if (!title.value.trim()) title.value = titleFromFileName(file.name);
+  };
+
+  $<HTMLInputElement>("#momentVideoFile").onchange = async (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const preview = $<HTMLVideoElement>("#momentVideoPreview");
+    err.textContent = "";
+    picked.video = null;
+    setPreview(preview, null);
+    if (!file) return;
+    const problem = videoProblem(file.size, file.size > VIDEO_MAX_BYTES ? 1 : await videoSeconds(file));
+    if (problem) {
+      err.textContent = problem;
+      input.value = "";
+      return;
+    }
+    picked.video = file;
+    setPreview(preview, file);
   };
 
   $("#recordBtn").onclick = () => {

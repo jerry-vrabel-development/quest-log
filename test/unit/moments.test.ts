@@ -10,6 +10,9 @@ import {
   makeMoment,
   parseLink,
   titleFromFileName,
+  VIDEO_MAX_BYTES,
+  VIDEO_MAX_SECONDS,
+  videoProblem,
 } from "../../src/core/moments";
 import { completeQuest } from "../../src/core/rules";
 import type { Moment, State } from "../../src/core/types";
@@ -178,5 +181,37 @@ describe("audio moments", () => {
     expect(titleFromFileName("01 - Harvest_Moon.mp3")).toBe("Harvest Moon");
     expect(titleFromFileName("Neil Young - Old Man.flac")).toBe("Neil Young - Old Man");
     expect(titleFromFileName("track.m4a")).toBe("track");
+  });
+});
+
+describe("video moments", () => {
+  it("needs its file, and says so", () => {
+    expect(makeMoment({ kind: "video", caption: "Bash in the waves" }, when(TODAY))).toEqual({
+      error: "Choose a video first.",
+    });
+    expect(make({ kind: "video", video: true, caption: "Bash in the waves" })).toMatchObject({
+      kind: "video",
+      caption: "Bash in the waves",
+    });
+  });
+
+  it("is worded as a video, carries a file and needs it to show", () => {
+    const v = make({ kind: "video", video: true });
+    expect(describeMoment(v).headline).toBe("A video from your day");
+    expect(hasMedia(v)).toBe(true);
+    expect(canShow(v, () => false)).toBe(false);
+    expect(canShow(v, () => true)).toBe(true);
+  });
+
+  it("holds clips up to a minute and 100 MB", () => {
+    const MB = 1024 * 1024;
+    expect(videoProblem(20 * MB, 45)).toBeNull();
+    expect(videoProblem(20 * MB, VIDEO_MAX_SECONDS)).toBeNull();
+    expect(videoProblem(20 * MB, 60.3)).toBeNull(); // phones round a "1:00" clip up a little
+    expect(videoProblem(20 * MB, 95)).toBe(
+      "That video is 95 seconds. Moments hold up to a minute: trim it first, or pick a shorter one.",
+    );
+    expect(videoProblem(VIDEO_MAX_BYTES + 1, 10)).toBe("That video is over 100 MB. Try a shorter clip.");
+    expect(videoProblem(MB, Number.NaN)).toBe("Couldn't play that video. Try another one.");
   });
 });

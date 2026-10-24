@@ -77,6 +77,10 @@ export interface State {
   /** Badge id → earned at. */
   badges: Record<string, number>;
   rewards?: PendingReward[];
+  /** Notes from past you: written on good days, they come back as memories on hard ones. */
+  notes?: { at: number; day: string; text: string }[];
+  /** Recently shown memory ids, so memory drops stay fresh. */
+  memSeen?: string[];
   updatedAt?: number;
 }
 

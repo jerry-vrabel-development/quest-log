@@ -8,7 +8,7 @@ import { initDice, openDice } from "./dice";
 import { $ } from "./dom";
 import { initEditor, openEditor } from "./editor";
 import { initChartTooltips } from "./journey";
-import { loadPhotoIndex } from "./media";
+import { loadMediaIndex } from "./media";
 import { initMoments } from "./moments";
 import { initMoodEditor } from "./moodEdit";
 import { checkReminders, initReminders } from "./reminders";
@@ -30,8 +30,12 @@ initDice();
 initMoodEditor();
 initMoments();
 initSessionSounds();
-// Photos for moments live in IndexedDB; once we know which are on this device, refresh the view.
-void loadPhotoIndex().then(render);
+// Moment files (photos, audio) live in IndexedDB; once we know which are on this device, refresh the view.
+// Saved files are listed in the background; mark the page when that's done (tests wait on it).
+void loadMediaIndex().then(() => {
+  document.documentElement.dataset.media = "ready";
+  render();
+});
 
 // The progress panel is sticky; scroll focused items to just below it, never underneath.
 const hud = $(".hud");

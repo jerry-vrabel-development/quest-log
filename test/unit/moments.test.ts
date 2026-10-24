@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { addNote, chooseMemory, type Memory } from "../../src/core/memories";
-import { CAPTION_MAX, addMoment, deleteMoment, describeMoment, makeMoment, parseLink } from "../../src/core/moments";
+import {
+  CAPTION_MAX,
+  addMoment,
+  canShow,
+  deleteMoment,
+  describeMoment,
+  hasMedia,
+  makeMoment,
+  parseLink,
+  titleFromFileName,
+} from "../../src/core/moments";
 import { completeQuest } from "../../src/core/rules";
 import type { Moment, State } from "../../src/core/types";
 import { emptyState, quest, sequence } from "../helpers/fixtures";
@@ -53,7 +63,7 @@ describe("makeMoment", () => {
 
   it("needs a title or link for songs and movies", () => {
     expect(makeMoment({ kind: "song", caption: "good" }, when(TODAY))).toEqual({
-      error: "Add the song's name or a link.",
+      error: "Add the song's name, a link, or a music file.",
     });
     expect(makeMoment({ kind: "movie" }, when(TODAY))).toEqual({ error: "Add the title or a link." });
   });
@@ -127,5 +137,46 @@ describe("moments in memory drops", () => {
     const S = emptyState();
     addMoment(S, make({ kind: "photo", caption: "now" }, TODAY));
     expect(chooseMemory(S, { ...ctx, lowDay: true })).toBeNull();
+  });
+});
+
+describe("audio moments", () => {
+  it("a song can be just its music file", () => {
+    expect(make({ kind: "song", audio: true, title: "Harvest Moon" })).toMatchObject({ kind: "song", audio: true });
+    expect(makeMoment({ kind: "song", audio: true }, when(TODAY))).not.toHaveProperty("error");
+  });
+
+  it("a recording needs something recorded", () => {
+    expect(makeMoment({ kind: "recording", caption: "riff" }, when(TODAY))).toEqual({
+      error: "Record something first.",
+    });
+    expect(make({ kind: "recording", audio: true, caption: "riff" })).toMatchObject({ kind: "recording", audio: true });
+  });
+
+  it("only songs and recordings carry audio", () => {
+    expect(make({ kind: "movie", title: "Heat", audio: true }).audio).toBeUndefined();
+  });
+
+  it("words recordings", () => {
+    expect(describeMoment(make({ kind: "recording", audio: true })).headline).toBe("Something you recorded");
+    expect(describeMoment(make({ kind: "recording", audio: true, title: "the new riff" })).headline).toBe(
+      "You recorded the new riff",
+    );
+  });
+
+  it("knows which moments carry files and which can show without them", () => {
+    const photo = make({ kind: "photo" });
+    const rec = make({ kind: "recording", audio: true });
+    const songFile = make({ kind: "song", title: "x", audio: true });
+    const songTitle = make({ kind: "song", title: "x" });
+    expect([photo, rec, songFile, songTitle].map(hasMedia)).toEqual([true, true, true, false]);
+    const nothingHere = () => false;
+    expect([photo, rec, songFile, songTitle].map((m) => canShow(m, nothingHere))).toEqual([false, false, true, true]);
+  });
+
+  it("guesses a title from a music file name", () => {
+    expect(titleFromFileName("01 - Harvest_Moon.mp3")).toBe("Harvest Moon");
+    expect(titleFromFileName("Neil Young - Old Man.flac")).toBe("Neil Young - Old Man");
+    expect(titleFromFileName("track.m4a")).toBe("track");
   });
 });

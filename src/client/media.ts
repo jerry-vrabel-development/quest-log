@@ -1,9 +1,10 @@
 /**
- * Photos for moments, kept in the device's own storage (IndexedDB), keyed by moment id.
- * Images are resized on the device before saving, so a phone photo takes a few hundred KB.
- * (Cloud backup to R2 is a later step; until then images stay on the device that took them.)
+ * Files for moments (photos, music files, recordings), kept in the device's own storage
+ * (IndexedDB), keyed by moment id. Photos are resized on the device before saving.
+ * (Cloud backup to R2 is a later step; until then files stay on the device that saved them.)
  */
 const DB = "quest-log-media";
+/** Named "photos" for history; it holds every kind of moment file. */
 const STORE = "photos";
 /** Longest side of a saved photo, in pixels. */
 export const PHOTO_MAX = 1600;
@@ -25,40 +26,51 @@ function db(): Promise<IDBDatabase> {
   return dbp;
 }
 
+/**
+ * Runs one request. Writes resolve only once the transaction commits, so a file counts as saved
+ * only when it would survive the app closing or reloading right away.
+ */
 async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const store = (await db()).transaction(STORE, mode).objectStore(STORE);
+  const tx = (await db()).transaction(STORE, mode);
   return new Promise((resolve, reject) => {
-    const req = fn(store);
-    req.onsuccess = () => {
-      resolve(req.result);
+    const req = fn(tx.objectStore(STORE));
+    const fail = () => {
+      reject(req.error ?? tx.error ?? new Error("IndexedDB request failed"));
     };
-    req.onerror = () => {
-      reject(req.error ?? new Error("IndexedDB request failed"));
-    };
+    req.onerror = fail;
+    tx.onabort = fail;
+    if (mode === "readonly")
+      req.onsuccess = () => {
+        resolve(req.result);
+      };
+    else
+      tx.oncomplete = () => {
+        resolve(req.result);
+      };
   });
 }
 
-/** Ids of moments whose photo is on this device (memory drops skip the rest). */
+/** Ids of moments whose file is on this device. */
 const local = new Set<string>();
 
-export async function loadPhotoIndex(): Promise<void> {
+export async function loadMediaIndex(): Promise<void> {
   try {
     for (const k of await run("readonly", (s) => s.getAllKeys())) if (typeof k === "string") local.add(k);
   } catch {
-    /* no IndexedDB (private mode): photos just aren't available */
+    /* no IndexedDB (private mode): files just aren't available */
   }
 }
 
-export const hasPhoto = (id: string): boolean => local.has(id);
+export const hasLocalMedia = (id: string): boolean => local.has(id);
 
-export async function savePhoto(id: string, blob: Blob): Promise<void> {
+export async function saveMedia(id: string, blob: Blob): Promise<void> {
   await run("readwrite", (s) => s.put(blob, id));
   local.add(id);
-  // Ask the browser to keep this storage, so photos aren't cleared to free space.
+  // Ask the browser to keep this storage, so files aren't cleared to free space.
   if ("storage" in navigator && "persist" in navigator.storage) void navigator.storage.persist();
 }
 
-export async function getPhoto(id: string): Promise<Blob | undefined> {
+export async function getMedia(id: string): Promise<Blob | undefined> {
   try {
     return (await run("readonly", (s) => s.get(id))) as Blob | undefined;
   } catch {
@@ -66,7 +78,7 @@ export async function getPhoto(id: string): Promise<Blob | undefined> {
   }
 }
 
-export async function deletePhoto(id: string): Promise<void> {
+export async function deleteMedia(id: string): Promise<void> {
   local.delete(id);
   try {
     await run("readwrite", (s) => s.delete(id));
@@ -98,7 +110,7 @@ export async function resizePhoto(file: Blob): Promise<Blob> {
 
 /** Puts a saved photo into an <img>, cleaning up the temporary URL once it has loaded. */
 export async function showPhoto(img: HTMLImageElement, id: string): Promise<boolean> {
-  const blob = await getPhoto(id);
+  const blob = await getMedia(id);
   if (!blob) return false;
   const url = URL.createObjectURL(blob);
   img.addEventListener(
@@ -109,5 +121,13 @@ export async function showPhoto(img: HTMLImageElement, id: string): Promise<bool
     { once: true },
   );
   img.src = url;
+  return true;
+}
+
+/** Puts a saved music file or recording into an <audio> player. (The URL lives as long as the page.) */
+export async function showAudio(audio: HTMLAudioElement, id: string): Promise<boolean> {
+  const blob = await getMedia(id);
+  if (!blob) return false;
+  audio.src = URL.createObjectURL(blob);
   return true;
 }

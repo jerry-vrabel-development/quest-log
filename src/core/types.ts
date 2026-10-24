@@ -60,9 +60,9 @@ export interface PendingReward {
   at: number;
 }
 
-export type MomentKind = "photo" | "song" | "movie" | "recording";
+export type MomentKind = "photo" | "song" | "movie" | "recording" | "video";
 
-/** Something to remember a day by. A photo's image is stored on the device under the moment id. */
+/** Something to remember a day by. A photo's image or a video is stored on the device under the moment id. */
 export interface Moment {
   id: string;
   at: number;

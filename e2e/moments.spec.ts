@@ -1,6 +1,11 @@
-// Moments: capture a photo, song or movie when it's good; it comes back as a memory drop when it's not.
+// Moments: capture a photo, video, song, recording or movie when it's good; it comes back as a memory drop when it's not.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { fileURLToPath } from "node:url";
+
+/** Tiny test videos: a 2-second clip, and a 70-second one (over the one-minute limit). */
+const CLIP = fileURLToPath(new URL("fixtures/clip-2s.webm", import.meta.url));
+const LONG_CLIP = fileURLToPath(new URL("fixtures/clip-70s.webm", import.meta.url));
 
 /** A tiny 80×60 test photo. */
 const PHOTO = Buffer.from(
@@ -189,9 +194,9 @@ function toneWav(): Buffer {
   return Buffer.concat([h, data]);
 }
 
-const playable = (audio: ReturnType<Page["locator"]>) =>
+const playable = (player: ReturnType<Page["locator"]>) =>
   expect
-    .poll(() => audio.evaluate((a: HTMLAudioElement) => (Number.isFinite(a.duration) ? a.duration : 0)), {
+    .poll(() => player.evaluate((a: HTMLMediaElement) => (Number.isFinite(a.duration) ? a.duration : 0)), {
       timeout: 20_000,
     })
     .toBeGreaterThan(0);
@@ -258,6 +263,61 @@ test("on a hard day, a song you saved comes back ready to play, and the chest st
   const audio = chest.locator(".chest-memory audio");
   await playable(audio);
   await audio.click(); // interacting inside the card doesn't close the chest
+  await expect(chest).toBeVisible();
+  await chest.getByRole("button", { name: "Collect" }).click();
+  await expect(chest).toHaveCount(0);
+});
+
+/* ---------- video ---------- */
+
+async function addVideoMoment(page: Page, file: string, caption: string) {
+  await page.getByRole("tab", { name: "Journey" }).click();
+  await page.getByRole("button", { name: "Add a moment" }).click();
+  const dlg = page.locator("#momentDialog");
+  await dlg.getByLabel("🎬 Video").check();
+  await dlg.getByLabel(/^Video/).setInputFiles(file);
+  await dlg.getByLabel("Caption").fill(caption);
+  return dlg;
+}
+
+test("a short video is saved on the device and plays back from Journey, never by itself", async ({ page }) => {
+  const dlg = await addVideoMoment(page, CLIP, "Bash in the waves");
+  await playable(dlg.locator("#momentVideoPreview"));
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  await expect(dlg).toBeHidden();
+  const video = page.locator(".moments video");
+  await expect(video).toHaveAttribute("aria-label", /^Play the video from .+: Bash in the waves$/);
+  await playable(video);
+  expect(await video.evaluate((v: HTMLVideoElement) => [v.autoplay, v.paused, v.playsInline])).toEqual([
+    false,
+    true,
+    true,
+  ]);
+  await noAxeViolations(page);
+});
+
+test("a video over a minute is turned away with a clear reason", async ({ page }) => {
+  const dlg = await addVideoMoment(page, LONG_CLIP, "too long");
+  await expect(dlg.getByRole("alert")).toHaveText(
+    "That video is 70 seconds. Moments hold up to a minute: trim it first, or pick a shorter one.",
+  );
+  await expect(dlg.locator("#momentVideoPreview")).toBeHidden();
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  await expect(dlg.getByRole("alert")).toHaveText("Choose a video first.");
+});
+
+test("on a hard day, a video you saved comes back in the chest, ready to play", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const dlg = await addVideoMoment(page, CLIP, "Bash in the waves");
+  await dlg.getByRole("button", { name: "Save moment" }).click();
+  await expect(dlg).toBeHidden();
+  await ageMoments(page);
+  await page.getByRole("button", { name: "3 out of 10, Rough" }).click(); // badge chest, with the video inside
+  const chest = page.locator(".chest-overlay");
+  await expect(chest.locator(".chest-memory")).toContainText("A video from your day");
+  const video = chest.locator(".chest-memory video");
+  await playable(video);
+  await video.click(); // interacting inside the card doesn't close the chest
   await expect(chest).toBeVisible();
   await chest.getByRole("button", { name: "Collect" }).click();
   await expect(chest).toHaveCount(0);

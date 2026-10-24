@@ -203,6 +203,55 @@
       </form>
     </dialog>
 
+    <!-- Add a moment: a photo, a song, a movie -->
+    <dialog id="momentDialog" aria-labelledby="momentTitle">
+      <form method="dialog" id="momentForm">
+        <h2 id="momentTitle">Save a moment</h2>
+        <p class="hint" id="momentHint">Something to remember today by. It comes back on a day you need it.</p>
+        <fieldset class="moment-kinds">
+          <legend>What is it?</legend>
+          <label class="kind"><input type="radio" name="kind" value="photo" checked /> 📷 Photo</label>
+          <label class="kind"><input type="radio" name="kind" value="song" /> 🎵 Song</label>
+          <label class="kind"><input type="radio" name="kind" value="movie" /> 🎞️ Movie or show</label>
+        </fieldset>
+        <div class="moment-photo">
+          <label>Photo<input type="file" id="momentFile" accept="image/*" /></label>
+          <img id="momentPreview" class="moment-preview" alt="" hidden />
+        </div>
+        <div class="moment-link" hidden>
+          <label><span id="momentTitleLabel">Song name</span><input id="momentTitleInput" maxlength="120" /></label>
+          <label
+            >Link <span class="hint">(optional: Spotify, YouTube, IMDb, …)</span
+            ><input id="momentLink" type="url" inputmode="url" placeholder="https://"
+          /></label>
+        </div>
+        <label
+          >Caption<textarea id="momentCaption" rows="2" maxlength="200" placeholder="Bash chasing the gulls"></textarea>
+        </label>
+        <label
+          >Goes with <span class="hint">(optional: quests in this area can bring it back)</span>
+          <select id="momentArea"></select>
+        </label>
+        <p class="moment-error" id="momentError" role="alert"></p>
+        <div class="ed-actions">
+          <span class="spacer"></span>
+          <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
+          <button type="submit" class="btn" id="momentSave">Save moment</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- A memory drop replaying a moment -->
+    <dialog id="memoryPop" aria-labelledby="memoryPopTitle">
+      <form method="dialog">
+        <p class="memory-pop-label" id="memoryPopLabel"></p>
+        <h2 id="memoryPopTitle"></h2>
+        <div class="memory-pop-media" id="memoryPopMedia"></div>
+        <p class="memory-pop-caption" id="memoryPopCaption"></p>
+        <div class="ed-actions"><span class="spacer"></span><button class="btn">Close</button></div>
+      </form>
+    </dialog>
+
     <!-- Settings -->
     <dialog id="settings">
       <form method="dialog">

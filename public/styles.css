@@ -1491,3 +1491,155 @@ legend {
   font-size: 1.1rem;
   cursor: pointer;
 }
+
+/* ---------- moments ---------- */
+.moment-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+}
+.moment-invite-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.moment-kinds {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.moment-kinds .kind {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+#momentDialog .moment-kinds input {
+  /* beat the dialog-wide text input sizing */
+  width: auto;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+#momentDialog {
+  overflow: auto;
+}
+.moment-photo,
+.moment-link {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.moment-photo[hidden],
+.moment-link[hidden] {
+  display: none;
+}
+.moment-preview,
+.moment-img {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.moment-error {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--warn);
+  font-size: 0.88rem;
+}
+dialog textarea {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  width: 100%;
+  resize: vertical;
+}
+.moment-link-card {
+  display: inline-block;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+a.moment-link-card:hover,
+a.moment-link-card:focus-visible {
+  border-color: var(--accent);
+}
+.moments {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.moment {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "media del"
+    "day day"
+    "caption caption";
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+.moment .moment-media {
+  grid-area: media;
+}
+.moment .note-del {
+  grid-area: del;
+  align-self: start;
+}
+.moment .note-day {
+  grid-area: day;
+  width: auto;
+}
+.moment-caption {
+  grid-area: caption;
+  overflow-wrap: anywhere;
+}
+.chest-memory-media {
+  margin: 6px 0 2px;
+}
+.chest-memory-media .moment-img {
+  max-height: 200px;
+  width: 100%;
+}
+#memoryPop {
+  width: min(480px, calc(100% - 24px));
+}
+#memoryPop form {
+  gap: 10px;
+}
+.memory-pop-label {
+  margin: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.memory-pop-media .moment-img {
+  width: 100%;
+  max-height: 60vh;
+}
+.memory-pop-caption {
+  margin: 0;
+  font-size: 1.05rem;
+}

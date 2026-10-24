@@ -8,6 +8,7 @@ import { logMood, setQuestDone } from "./actions";
 import { $, el, fmtClock, fmtDue, REPEAT_LABEL } from "./dom";
 import { openEditor } from "./editor";
 import { renderJourney } from "./journey";
+import { inviteCard } from "./moments";
 import { updateNotifUI } from "./reminders";
 import { S, saveLocal, today } from "./store";
 
@@ -81,6 +82,8 @@ function renderHud(t: string): void {
 }
 
 function renderNow(box: HTMLElement, t: string): void {
+  const invite = inviteCard(t);
+  if (invite) box.append(invite);
   box.append(moodCard(t));
   const v = nowView(S.quests, t);
   if (v.overdue.length) section(box, "Overdue — no guilt, just pick one", v.overdue, { cls: "overdue", t });

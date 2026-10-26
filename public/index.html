@@ -230,6 +230,41 @@
       </form>
     </dialog>
 
+    <!-- Share how I'm doing: a short update for friends and family -->
+    <dialog id="shareDialog" aria-labelledby="shareTitle">
+      <form method="dialog" id="shareForm">
+        <h2 id="shareTitle">Share how I'm doing</h2>
+        <p class="hint">For when people ask. You see every word before it goes anywhere.</p>
+        <label
+          >The message <span class="hint">(edit it however you like)</span><textarea id="shareText" rows="5"></textarea>
+        </label>
+        <label class="share-photo" id="sharePhotoRow" hidden
+          ><input type="checkbox" id="sharePhoto" /> Attach the highlight photo</label
+        >
+        <p class="hint" id="shareStatus" aria-live="polite"></p>
+        <fieldset class="share-choice">
+          <legend>Period</legend>
+          <label><input type="radio" name="period" value="today" /> Today</label>
+          <label><input type="radio" name="period" value="week" checked /> This week</label>
+          <label><input type="radio" name="period" value="month" /> This month</label>
+        </fieldset>
+        <fieldset class="share-choice">
+          <legend>Tone</legend>
+          <label><input type="radio" name="tone" value="short" /> Just the headline</label>
+          <label><input type="radio" name="tone" value="more" checked /> A bit more</label>
+        </fieldset>
+        <fieldset class="share-choice" id="shareInclude">
+          <legend>Include</legend>
+        </fieldset>
+        <div class="ed-actions">
+          <button value="cancel" class="btn ghost" formnovalidate>Close</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn ghost" id="shareCopy">Copy</button>
+          <button type="button" class="btn" id="shareSend">Share</button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- Edit a mood check-in -->
     <dialog id="moodEdit" aria-labelledby="moodEditTitle">
       <form method="dialog">

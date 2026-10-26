@@ -1742,3 +1742,49 @@ a.moment-link-card:focus-visible {
   margin: 0;
   font-size: 1.05rem;
 }
+
+/* ---------- share how I'm doing ---------- */
+.share-btn {
+  width: 100%;
+  margin-top: 14px;
+}
+#shareDialog {
+  width: min(520px, calc(100% - 24px));
+}
+#shareDialog form {
+  gap: 12px;
+}
+.share-choice {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px 10px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.share-choice legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+#shareDialog .share-choice label,
+#shareDialog .share-photo {
+  flex-direction: row;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+#shareDialog .share-choice input,
+#shareDialog .share-photo input {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+#shareText {
+  font: inherit;
+  line-height: 1.4;
+}

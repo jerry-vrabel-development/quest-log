@@ -18,7 +18,7 @@ export function seedQuests(today: string): SeedQuest[] {
   });
   return [
     Q("Getting started", "Check off this quest", "Tap the box on the left", 5),
-    Q("Getting started", "Log how you feel right now", "Tap a number on the mood card above", 5),
+    Q("Getting started", "Log how you feel right now", "Tap 📝 Log at the top", 5),
     Q("Getting started", "Add one small quest of your own", "Tap + Quest", 10, { due: today }),
     Q("Health", "Drink a glass of water", "Fill the glass", 5, { due: today, time: "09:00", repeat: "daily" }),
     Q("Health", "Go outside for five minutes", "Shoes on, open the door", 10, {

@@ -1,9 +1,11 @@
 /** The app's single state object, persisted to localStorage. */
 import { localYmd } from "../core/dates";
+import { demoState } from "../core/demo";
 import { freshState, upgradeState } from "../core/state";
 import type { State, When } from "../core/types";
+import { DEMO, NS } from "./demo";
 
-const KEY = "quest-log-v2";
+const KEY = NS + "quest-log-v2";
 
 /**
  * The live state. Other modules read it through this live binding; replace it only via setState().
@@ -20,17 +22,25 @@ export function setState(next: unknown): void {
   S = upgradeState(next);
 }
 
+/** A fresh start: the starter quests, or in the demo, the sample life. */
+const fresh = (): State => (DEMO ? demoState(today()) : freshState(today()));
+
+/** True when load() had nothing saved and started fresh (the demo then draws its sample photos). */
+export let startedFresh = false;
+
 export function load(): void {
   try {
     const raw = localStorage.getItem(KEY);
-    setState(raw ? JSON.parse(raw) : freshState(today()));
+    startedFresh = !raw;
+    setState(raw ? JSON.parse(raw) : fresh());
   } catch {
-    setState(freshState(today()));
+    startedFresh = true;
+    setState(fresh());
   }
 }
 
 export function reset(): void {
-  setState(freshState(today()));
+  setState(fresh());
 }
 
 /** Writes to this device only, without marking the state as changed (no sync). */
@@ -59,14 +69,14 @@ export function save(): void {
 export const prefs = {
   get(k: string): string | null {
     try {
-      return localStorage.getItem(k);
+      return localStorage.getItem(NS + k);
     } catch {
       return null;
     }
   },
   set(k: string, v: string): void {
     try {
-      localStorage.setItem(k, v);
+      localStorage.setItem(NS + k, v);
     } catch {
       /* ignore */
     }

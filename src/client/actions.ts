@@ -4,6 +4,7 @@
  *   2. let the core rules change the state and decide how big the moment is,
  *   3. pay out: loot, badges, and a celebration sized to the moment.
  */
+import { DEMO } from "./demo";
 import type { Extras } from "../core/checkin";
 import { celebrationFor, guaranteedDrop, isLowDay, type Moment, type Tier } from "../core/celebrate";
 import { completeQuest, level, recordFreeze, recordMood, rollLoot, streak, uncompleteQuest } from "../core/rules";
@@ -51,7 +52,8 @@ function pickMemory(m: {
   area?: string;
 }): Memory | null {
   if (m.xp <= 0 && !(m.kind === "mood" && m.lowDay)) return null;
-  if (Math.random() >= memoryChance(m.tier, m.lowDay)) return null;
+  // In the demo every reward brings a memory, so visitors see one right away; normally it's sometimes.
+  if (!DEMO && Math.random() >= memoryChance(m.tier, m.lowDay)) return null;
   const memory = chooseMemory(S, {
     today: today(),
     lowDay: m.lowDay,

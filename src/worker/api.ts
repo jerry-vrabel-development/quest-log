@@ -1,9 +1,19 @@
 // The app's REST API: state sync, moment file backup, push subscriptions and the notification outbox.
 // Authenticated by the sync code as a bearer token; the server only stores its hash.
 import { isValidTimeZone } from "../core/dates";
-import { DEFAULT_TZ, addSub, enqueue, getUpdatedAt, getUser, putUser, removeSub, takeOutbox } from "./db";
+import {
+  DEFAULT_TZ,
+  addSub,
+  deleteUserRows,
+  enqueue,
+  getUpdatedAt,
+  getUser,
+  putUser,
+  removeSub,
+  takeOutbox,
+} from "./db";
 import { json, readJson, userIdFromRequest } from "./http";
-import { handleMediaItem, listMedia } from "./media";
+import { deleteAllMedia, handleMediaItem, listMedia } from "./media";
 import { pushUser, type PushSender } from "./push";
 
 export const MAX_STATE_BYTES = 1_000_000;
@@ -53,12 +63,20 @@ const routes: Partial<Record<string, Handler>> = {
     ) {
       return json({ error: "bad_state" }, 400);
     }
+    // The sealed private part (check-ins, notes, moments) is opaque here: stored, never read.
+    const sealed = state as { vault?: unknown };
+    if (sealed.vault !== undefined && typeof sealed.vault !== "string") return json({ error: "bad_state" }, 400);
     const updatedAt = Number(body.updatedAt) || Date.now();
     const tz = isValidTimeZone(body.tz) ? body.tz : DEFAULT_TZ;
     const existing = await getUpdatedAt(env.DB, userId);
     if (existing !== null && existing > updatedAt && !body.force) {
       // another device saved something newer: the client should pull first
       return json({ error: "conflict", updatedAt: existing }, 409);
+    }
+    if (sealed.vault === undefined) {
+      // An older app version doesn't know about the sealed part: keep it rather than lose it.
+      const prev = (await getUser(env.DB, userId))?.state as { vault?: unknown } | undefined;
+      if (typeof prev?.vault === "string") sealed.vault = prev.vault;
     }
     await putUser(env.DB, userId, body.state, tz, updatedAt);
     return json({ ok: true, updatedAt });
@@ -73,6 +91,13 @@ const routes: Partial<Record<string, Handler>> = {
     if (!isPushEndpoint(endpoint)) return json({ error: "bad_endpoint" }, 400);
     await addSub(env.DB, userId, endpoint, Date.now());
     return json({ ok: true });
+  },
+
+  /** Delete my data: everything the server holds for this account, files included. Local data is untouched. */
+  async "DELETE /api/account"(_req, env, userId) {
+    const files = await deleteAllMedia(env.MEDIA, userId);
+    await deleteUserRows(env.DB, userId);
+    return json({ ok: true, files });
   },
 
   async "DELETE /api/subscribe"(req, env, userId) {

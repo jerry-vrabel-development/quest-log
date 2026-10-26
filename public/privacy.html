@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy · Quest Log</title>
+    <meta name="description" content="What Quest Log stores, where it lives, and who can read it." />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="wrap privacy">
+      <p><a href="./">← Back to Quest Log</a></p>
+      <h1>Privacy</h1>
+      <p class="sub">Last updated October 26, 2026. Plain language, no fine print.</p>
+
+      <h2>The short version</h2>
+      <ul>
+        <li>
+          Quest Log works without an account. Unless you turn on Sync, everything stays in your browser on your device.
+        </li>
+        <li>
+          If you turn on Sync, your check-ins, notes and moments are <strong>encrypted on your device</strong> before
+          they leave it. The server stores them but can't read them.
+        </li>
+        <li>No ads, no tracking, no analytics, no selling or sharing your data. Ever.</li>
+        <li>You can download all of it, or delete it from the server, at any time.</li>
+      </ul>
+
+      <h2>Without Sync</h2>
+      <p>
+        Your quests, check-ins, notes, loot, photos, songs, videos and recordings are stored in your browser's own
+        storage on this device. Nothing is sent to a server. If you clear your browser's data or lose the device, it's
+        gone, so use
+        <strong>Settings → Back up</strong> now and then.
+      </p>
+
+      <h2>With Sync</h2>
+      <p>
+        Sync gives you a long, random sync code. It works like a key: anyone who has it can open your data, so keep it
+        private.
+      </p>
+      <ul>
+        <li>
+          <strong>Encrypted on your device, unreadable to the server:</strong> check-ins (mood, anxiety, energy, body,
+          focus, sleep and pain notes, pictures), your notes from past you, and moments (captions, titles, links, and
+          the photo, video, song and recording files themselves). They're sealed with AES-256-GCM using a key made from
+          your sync code, which never leaves your device.
+        </li>
+        <li>
+          <strong>Readable by the server, so features work:</strong> quests (names, tiny steps, schedules), XP, loot,
+          badges and the days you were active. Push reminders need quest times, and the Claude connector needs quests.
+        </li>
+        <li>The server knows your account only by a one-way hash of your sync code, not the code itself.</li>
+        <li>
+          If you lose your sync code, nobody, including us, can unlock the encrypted parts. Keep a copy somewhere safe.
+        </li>
+      </ul>
+
+      <h2>If you connect Claude</h2>
+      <p>
+        The Quest Log connector lets Claude read and change your quests and log check-ins for you. A check-in Claude
+        logs sits on the server unencrypted only until your device next syncs; then it's sealed like the rest. Claude
+        can't read your older, encrypted check-ins, notes or moments.
+      </p>
+
+      <h2>Who else is involved</h2>
+      <ul>
+        <li>
+          <strong>Cloudflare</strong> hosts the app and stores synced data and backed-up files (encrypted as described
+          above).
+        </li>
+        <li>
+          <strong>Google Fonts</strong> serves the app's typefaces, so Google sees your IP address when the fonts load.
+          No other Google services are used.
+        </li>
+        <li>
+          <strong>Your phone's push service</strong> (Apple, Google or Mozilla) wakes the app when a reminder is due, if
+          you turn reminders on. It only gets a wake-up signal; the app then fetches the reminder's text from our
+          server.
+        </li>
+        <li><strong>Anthropic</strong>, only if you connect Claude yourself.</li>
+      </ul>
+
+      <h2>Your controls</h2>
+      <ul>
+        <li><strong>Download everything:</strong> Settings → Back up.</li>
+        <li>
+          <strong>Delete from the server:</strong> Settings → Delete my data from the server. This removes your synced
+          data, reminders and backed-up files from the server, and turns Sync off. Your device keeps everything.
+        </li>
+        <li>
+          <strong>Delete anything one at a time:</strong> check-ins, notes and moments can each be deleted in Journey.
+        </li>
+      </ul>
+
+      <h2>Health information</h2>
+      <p>
+        Quest Log is a personal tool, not a medical service, and it doesn't replace care from a professional. It isn't
+        connected to any doctor, insurer or health system. If something ever went wrong with the security of your data,
+        we'd tell you promptly.
+      </p>
+
+      <h2>Questions</h2>
+      <p>Email <a href="mailto:hire.jerry.vrabel@gmail.com">hire.jerry.vrabel@gmail.com</a>. A person reads it.</p>
+    </main>
+  </body>
+</html>

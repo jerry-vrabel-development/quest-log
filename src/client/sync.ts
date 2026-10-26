@@ -3,7 +3,9 @@
  * The sync code is a random 256-bit secret; the server only ever sees it as a bearer token
  * and stores its SHA-256 hash. Conflicts are last-write-wins with a 409 guard.
  */
+import { isPrivateBundle, mergeState, splitState, type SharedState } from "../core/privacy";
 import type { State } from "../core/types";
+import { seal, unseal, vaultKey } from "../core/vault";
 import { processRewards } from "./actions";
 import { DEMO } from "./demo";
 import { $ } from "./dom";
@@ -61,6 +63,38 @@ export async function writeSwConfig(): Promise<void> {
   }
 }
 
+/* ---------- the private part of sync, sealed on this device ---------- */
+
+/** Additional data for the sealed state, so it can't be swapped with a sealed file. */
+const STATE_AAD = "quest-log/state";
+
+function toB64(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+/** The state to upload: the shared part, with check-ins, notes and moments sealed into `vault`. */
+async function sealedState(code: string): Promise<SharedState> {
+  const { shared, secret } = splitState(S);
+  const plain = new Uint8Array(new TextEncoder().encode(JSON.stringify(secret)));
+  shared.vault = toB64(await seal(await vaultKey(code), STATE_AAD, plain, "application/json"));
+  return shared;
+}
+
+/** Opens a downloaded state. Null if its sealed part can't be opened (it's then left untouched). */
+async function openState(code: string, remote: SharedState): Promise<State | null> {
+  if (!remote.vault) return mergeState(remote, null); // saved before encryption: nothing sealed yet
+  try {
+    const { data } = await unseal(await vaultKey(code), STATE_AAD, fromB64(remote.vault));
+    const secret: unknown = JSON.parse(new TextDecoder().decode(data));
+    return isPrivateBundle(secret) ? mergeState(remote, secret) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function apiFetch(path: string, opts: RequestInit = {}): Promise<Response> {
   const headers = new Headers(opts.headers);
   if (!headers.has("content-type")) headers.set("content-type", "application/json");
@@ -82,11 +116,16 @@ function scheduleSync(): void {
 /** Uploads local state. A 409 means another device saved newer data, so pull instead. */
 export async function pushState(force = false): Promise<void> {
   if (!SYNC.code) return;
+  // A device that hasn't synced yet (just linked) must take the server's copy first, never overwrite it.
+  if (!S.updatedAt && !force) {
+    await pullState();
+    return;
+  }
   try {
     const res = await apiFetch("/api/state", {
       method: "PUT",
       body: JSON.stringify({
-        state: S,
+        state: await sealedState(SYNC.code),
         updatedAt: S.updatedAt || Date.now(),
         tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
         force,
@@ -116,11 +155,17 @@ export async function pullState(): Promise<void> {
       setSyncStatus("error");
       return;
     }
-    const remote = (await res.json()) as { state: State; updatedAt?: number };
+    const remote = (await res.json()) as { state: SharedState; updatedAt?: number };
     const theirs = remote.updatedAt || 0;
     const ours = S.updatedAt || 0;
     if (theirs > ours) {
-      setState(remote.state);
+      // If the sealed part can't be opened, keep what's here rather than lose private data.
+      const opened = await openState(SYNC.code, remote.state);
+      if (!opened) {
+        setSyncStatus("error");
+        return;
+      }
+      setState(opened);
       S.updatedAt = theirs;
       saveLocal();
       applyTheme();
@@ -170,8 +215,9 @@ export async function subscribePush(): Promise<boolean> {
 
 async function unsubscribePush(): Promise<void> {
   try {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
+    // getRegistration() answers at once; `ready` would wait forever where no service worker runs.
+    const reg = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
+    const sub = await reg?.pushManager.getSubscription();
     if (sub) {
       await apiFetch("/api/subscribe", { method: "DELETE", body: JSON.stringify({ endpoint: sub.endpoint }) });
       await sub.unsubscribe();
@@ -208,6 +254,44 @@ export function updateSyncUI(): void {
   $("#syncShow").hidden = !on;
   $("#syncTest").hidden = !(on && SYNC.push);
   $("#syncOff").hidden = !on;
+  $("#syncDelete").hidden = !on;
+  if (!on) armDelete(false);
+}
+
+/* ---------- delete my data ---------- */
+
+let deleteArmed = false;
+function armDelete(armed: boolean): void {
+  deleteArmed = armed;
+  const btn = document.querySelector<HTMLButtonElement>("#syncDelete");
+  if (!btn) return;
+  btn.textContent = armed ? "Tap again: delete everything on the server" : "Delete my data from the server";
+  btn.classList.toggle("armed", armed);
+}
+
+/** Removes this account from the server (state, reminders, backed-up files). This device keeps everything. */
+async function deleteServerData(): Promise<void> {
+  if (!deleteArmed) {
+    armDelete(true);
+    return;
+  }
+  armDelete(false);
+  let ok = false;
+  try {
+    ok = (await apiFetch("/api/account", { method: "DELETE" })).ok;
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
+    toast("sync", "Couldn't delete", "The server didn't answer. Nothing was changed; try again when you're online.");
+    return;
+  }
+  await unsubscribePush();
+  SYNC = {};
+  saveSync();
+  updateSyncUI();
+  synced();
+  toast("sync", "Deleted from the server", "Sync is off. Everything is still here on this device.");
 }
 
 export function initSync(): void {
@@ -245,6 +329,7 @@ export function initSync(): void {
     if (r?.sent) toast("push", "Test sent", "A notification should appear in a few seconds.");
     else toast("push", "Test failed", "Try turning reminders off and on again.");
   };
+  $("#syncDelete").onclick = () => void deleteServerData();
   $("#syncOff").onclick = async () => {
     if (!confirm("Turn off sync on this device? Your quests stay here and on the server.")) return;
     await unsubscribePush();

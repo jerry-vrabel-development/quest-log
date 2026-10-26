@@ -1806,3 +1806,16 @@ a.moment-link-card:focus-visible {
   border-color: var(--bg);
   text-decoration: none;
 }
+
+/* ---------- privacy page ---------- */
+.privacy {
+  max-width: 680px;
+  padding-bottom: 48px;
+  line-height: 1.55;
+}
+.privacy h2 {
+  margin-top: 28px;
+}
+.privacy li {
+  margin: 6px 0;
+}

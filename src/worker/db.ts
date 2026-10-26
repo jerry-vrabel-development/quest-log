@@ -146,3 +146,19 @@ export async function takeOutbox(db: D1Database, userId: string, now: number): P
     .run();
   return results;
 }
+
+/* ---------- account deletion ---------- */
+
+/** Every table that holds anything about a user. Media files in R2 are removed separately. */
+const USER_TABLES = [
+  ["users", "id"],
+  ["subs", "user_id"],
+  ["sent", "user_id"],
+  ["outbox", "user_id"],
+  ["media", "user_id"],
+] as const;
+
+/** Removes every row about a user. */
+export async function deleteUserRows(db: D1Database, userId: string): Promise<void> {
+  for (const [table, col] of USER_TABLES) await db.prepare(`DELETE FROM ${table} WHERE ${col} = ?`).bind(userId).run();
+}

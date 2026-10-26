@@ -1,4 +1,4 @@
-// An in-memory R2 bucket for tests: the slice of the R2 API the Worker uses (put, get, delete).
+// An in-memory R2 bucket for tests: the slice of the R2 API the Worker uses (put, get, delete, list).
 export interface TestR2 {
   objects: Map<string, Uint8Array>;
 }
@@ -25,8 +25,12 @@ export function createR2(): R2Bucket & TestR2 {
       if (!data) return null;
       return { key, size: data.byteLength, body: new Response(data.slice()).body };
     },
-    async delete(key: string) {
-      objects.delete(key);
+    async delete(keys: string | string[]) {
+      for (const k of Array.isArray(keys) ? keys : [keys]) objects.delete(k);
+    },
+    async list({ prefix = "" }: { prefix?: string } = {}) {
+      const found = [...objects.entries()].filter(([k]) => k.startsWith(prefix));
+      return { objects: found.map(([key, v]) => ({ key, size: v.byteLength })), truncated: false };
     },
   };
   return bucket as unknown as R2Bucket & TestR2;

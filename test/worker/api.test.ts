@@ -3,11 +3,11 @@ import type { State } from "../../src/core/types";
 import { MAX_STATE_BYTES, handleApi, type ApiEnv } from "../../src/worker/api";
 import type { PushSender } from "../../src/worker/push";
 import { createD1, type TestD1 } from "../helpers/d1";
-import { createR2 } from "../helpers/r2";
+import { createR2, type TestR2 } from "../helpers/r2";
 import { CODE, OTHER_CODE, emptyState, quest } from "../helpers/fixtures";
 import { body as read } from "../helpers/http";
 
-let env: ApiEnv & { DB: TestD1 };
+let env: ApiEnv & { DB: TestD1; MEDIA: TestR2 };
 let push: Mock<PushSender>;
 beforeEach(() => {
   env = {
@@ -135,5 +135,59 @@ describe("push subscriptions and outbox", () => {
   it("another user's outbox stays private", async () => {
     await call("POST", "/api/test-push");
     expect((await read(await call("GET", "/api/outbox", { code: OTHER_CODE }))).items).toEqual([]);
+  });
+});
+
+describe("sealed private part", () => {
+  const sealedState = (vault?: unknown) => ({
+    ...emptyState({ quests: [quest(1)] }),
+    ...(vault === undefined ? {} : { vault }),
+  });
+
+  it("stores the sealed part as it is and gives it back", async () => {
+    expect((await put(sealedState("c2VhbGVk"))).status).toBe(200);
+    expect((await read(await call("GET", "/api/state"))).state.vault).toBe("c2VhbGVk");
+  });
+
+  it("keeps the sealed part when an older app version saves without it", async () => {
+    await put(sealedState("c2VhbGVk"));
+    await put(sealedState(), { updatedAt: 3000 });
+    expect((await read(await call("GET", "/api/state"))).state.vault).toBe("c2VhbGVk");
+  });
+
+  it("rejects a sealed part that isn't a string", async () => {
+    expect((await put(sealedState({ moods: [] }))).status).toBe(400);
+  });
+});
+
+describe("delete my data", () => {
+  it("removes everything the server holds for the account, files included, and nothing of anyone else's", async () => {
+    await put(emptyState({ quests: [quest(1)] }));
+    await call("POST", "/api/subscribe", { body: { endpoint: "https://push.example/1" } });
+    const mediaReq = (code: string) =>
+      handleApi(
+        new Request("https://q.test/api/media/aaaaaaaa-0001", {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${code}`, "content-length": "3" },
+          body: new Uint8Array([1, 2, 3]),
+        }),
+        env,
+        { push },
+      );
+    await mediaReq(CODE);
+    await put(emptyState({ quests: [quest(2)] }), {}, OTHER_CODE);
+    await mediaReq(OTHER_CODE);
+
+    const res = await call("DELETE", "/api/account");
+    expect(await read(res)).toEqual({ ok: true, files: 1 });
+    expect((await call("GET", "/api/state")).status).toBe(404);
+    expect(await count("subs")).toBe(0);
+    expect(await count("media")).toBe(1); // the other account's
+    expect(env.MEDIA.objects.size).toBe(1);
+    expect((await call("GET", "/api/state", { code: OTHER_CODE })).status).toBe(200);
+  });
+
+  it("needs the sync code", async () => {
+    expect((await call("DELETE", "/api/account", { code: null })).status).toBe(401);
   });
 });

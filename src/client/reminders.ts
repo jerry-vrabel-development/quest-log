@@ -2,6 +2,7 @@
  * In-app reminders (while the app is open) and the notification permission UI.
  * Push from the server takes over once sync is on.
  */
+import { DEMO } from "./demo";
 import { reminderFor, REMINDER_GRACE_MS } from "../core/reminders";
 import { $ } from "./dom";
 import { S, prefs, today } from "./store";
@@ -24,6 +25,7 @@ function loadNotified(): Record<string, number> {
 }
 
 export async function checkReminders(): Promise<void> {
+  if (DEMO) return; // sample quests shouldn't buzz anyone's phone
   if (!hasNotif || Notification.permission !== "granted") return;
   if (SYNC.code && SYNC.push) return; // the server sends these
   const now = Date.now();

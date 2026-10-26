@@ -5,6 +5,7 @@
  */
 import type { State } from "../core/types";
 import { processRewards } from "./actions";
+import { DEMO } from "./demo";
 import { $ } from "./dom";
 import { hasNotif } from "./reminders";
 import { render } from "./render";
@@ -192,7 +193,7 @@ async function startSync(code: string): Promise<void> {
 export function updateSyncUI(): void {
   const box = document.querySelector<HTMLElement>("#syncBox");
   if (!box) return;
-  box.hidden = !onServer();
+  box.hidden = DEMO || !onServer();
   const on = !!SYNC.code;
   const pushText =
     SYNC.push ? "on"
@@ -210,6 +211,11 @@ export function updateSyncUI(): void {
 }
 
 export function initSync(): void {
+  if (DEMO) {
+    // The demo never talks to the server, and never touches the service worker's config (shared with the real app).
+    $("#syncBox").hidden = true;
+    return;
+  }
   onSave(scheduleSync);
   $("#syncOn").onclick = async () => {
     await startSync(newCode());

@@ -1788,3 +1788,21 @@ a.moment-link-card:focus-visible {
   font: inherit;
   line-height: 1.4;
 }
+
+/* ---------- demo ---------- */
+.demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 16px;
+  font-size: 0.9rem;
+}
+.demo-banner .btn.ghost {
+  color: var(--bg);
+  border-color: var(--bg);
+  text-decoration: none;
+}

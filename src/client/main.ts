@@ -8,14 +8,15 @@ import { initDice, openDice } from "./dice";
 import { $ } from "./dom";
 import { initEditor, openEditor } from "./editor";
 import { initChartTooltips } from "./journey";
-import { loadMediaIndex } from "./media";
+import { loadMediaIndex, saveMedia } from "./media";
 import { initMoments } from "./moments";
 import { initMoodEditor } from "./moodEdit";
 import { checkReminders, initReminders } from "./reminders";
 import { isView, render, setView } from "./render";
 import { initSessionSounds } from "./session";
 import { applyTheme, initSettings } from "./settings";
-import { load, today } from "./store";
+import { load, saveLocal, startedFresh, today } from "./store";
+import { DEMO, demoPhotos, drawScene, resetDemo, showDemoBanner } from "./demo";
 import { initBackup } from "./backup";
 import { initLog } from "./log";
 import { initShare } from "./share";
@@ -24,6 +25,15 @@ import { initSync, pullState } from "./sync";
 const REMINDER_POLL_MS = 30_000;
 
 load();
+if (DEMO) {
+  document.title = "Quest Log · Demo";
+  showDemoBanner(() => void resetDemo());
+  if (startedFresh) {
+    saveLocal(); // keep the sample life across reloads
+    // Draw the sample photos once, then show them.
+    void Promise.all(demoPhotos.map(async (p) => saveMedia(p.id, await drawScene(p.scene)))).then(render);
+  }
+}
 initEditor();
 initReminders();
 initSettings();

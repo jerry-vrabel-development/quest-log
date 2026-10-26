@@ -3,7 +3,9 @@
  * (IndexedDB), keyed by moment id. Photos are resized on the device before saving.
  * (Cloud backup to R2 is a later step; until then files stay on the device that saved them.)
  */
-const DB = "quest-log-media";
+import { NS } from "./demo";
+
+const DB = NS + "quest-log-media";
 /** Named "photos" for history; it holds every kind of moment file. */
 const STORE = "photos";
 /** Longest side of a saved photo, in pixels. */

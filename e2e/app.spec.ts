@@ -129,7 +129,7 @@ test("a check-in earns XP once per day, and Now never shows it back to you", asy
 });
 
 test("the Log needs only a mood; extras are optional, in words, and land in Journey", async ({ page }) => {
-  await page.getByRole("button", { name: "📝 Log" }).click();
+  await page.getByRole("button", { name: "📝 Log", exact: true }).click();
   const dlg = page.locator("#logDialog");
   await dlg.getByRole("button", { name: "Save", exact: true }).click();
   await expect(dlg.getByRole("alert")).toHaveText("Pick a mood number first. That's all it needs.");

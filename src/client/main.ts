@@ -18,6 +18,7 @@ import { applyTheme, initSettings } from "./settings";
 import { load, today } from "./store";
 import { initBackup } from "./backup";
 import { initLog } from "./log";
+import { initShare } from "./share";
 import { initSync, pullState } from "./sync";
 
 const REMINDER_POLL_MS = 30_000;
@@ -29,6 +30,7 @@ initSettings();
 initSync();
 initBackup();
 initLog();
+initShare();
 initChartTooltips();
 initDice();
 initMoodEditor();

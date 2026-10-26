@@ -7,7 +7,7 @@ export async function logMood(
   mood: string,
   { note, steps = [], sleep, picture }: { note?: string; steps?: string[]; sleep?: string; picture?: string } = {},
 ) {
-  await page.getByRole("button", { name: "📝 Log" }).click();
+  await page.getByRole("button", { name: "📝 Log", exact: true }).click();
   const dlg = page.locator("#logDialog");
   await expect(dlg).toBeVisible();
   await dlg.getByRole("button", { name: mood }).click();

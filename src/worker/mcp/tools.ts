@@ -311,6 +311,12 @@ const impl: Record<ToolName, (ctx: ToolContext, a: Args) => string | Promise<str
     const areas = Object.entries(byCat)
       .map(([k, v]) => `${k} ${v}`)
       .join(", ");
+    const sealedNote =
+      typeof (S as { vault?: unknown }).vault === "string" ?
+        [
+          "(Check-ins, notes and moments are end-to-end encrypted on the user's device. Only check-ins logged through Claude since the app last synced show here.)",
+        ]
+      : [];
     return [
       `Today is ${t}. Last ${days} days:`,
       `Level ${lv.l} (${S.xp} XP total, ${lv.into}/${lv.need} to next) · current streak ${plural(st, "day")}`,
@@ -319,6 +325,7 @@ const impl: Record<ToolName, (ctx: ToolContext, a: Args) => string | Promise<str
       `Badges earned: ${Object.keys(S.badges).length}`,
       "Per day:",
       ...perDay,
+      ...sealedNote,
     ].join("\n");
   },
 };

@@ -80,3 +80,17 @@ export async function handleMediaItem(req: Request, env: MediaEnv, userId: strin
 
   return json({ error: "not_found" }, 404);
 }
+
+/** Deletes every file stored for a user (everything under their key prefix). */
+export async function deleteAllMedia(bucket: R2Bucket, userId: string): Promise<number> {
+  let removed = 0;
+  let cursor: string | undefined;
+  do {
+    const page = await bucket.list({ prefix: `${userId}/`, ...(cursor ? { cursor } : {}) });
+    const keys = page.objects.map((o) => o.key);
+    if (keys.length) await bucket.delete(keys);
+    removed += keys.length;
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return removed;
+}

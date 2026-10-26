@@ -70,7 +70,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expectNoViolations(page, `Frozen? dice (${colorScheme})`);
       await page.getByRole("button", { name: "Close" }).click();
 
-      await page.getByRole("button", { name: "📝 Log" }).click();
+      await page.getByRole("button", { name: "📝 Log", exact: true }).click();
       const log = page.locator("#logDialog");
       await log.getByRole("button", { name: "6 out of 10, Okay" }).click();
       await log.getByText("More: anxiety, energy, body, focus, sleep, pain").click();
@@ -174,7 +174,7 @@ test.describe("keyboard", () => {
 
   test("the Log says which choices are picked, without relying on color", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "📝 Log" }).click();
+    await page.getByRole("button", { name: "📝 Log", exact: true }).click();
     const dlg = page.locator("#logDialog");
     await dlg.getByRole("button", { name: "7 out of 10, Decent" }).click();
     await expect(dlg.getByRole("button", { name: "7 out of 10, Decent" })).toHaveAttribute("aria-pressed", "true");

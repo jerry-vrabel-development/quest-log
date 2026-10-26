@@ -8,6 +8,7 @@ import { addNote, deleteNote, NOTE_MAX } from "../core/memories";
 import { el, fmtClock, fmtDay, fmtWeekdayNarrow } from "./dom";
 import { hasLocalMedia, showPhoto } from "./media";
 import { openMoodEditor } from "./moodEdit";
+import { openShare } from "./share";
 import { momentsSection } from "./moments";
 import { render } from "./render";
 import { S, save, when } from "./store";
@@ -238,6 +239,10 @@ function notesFromPastYou(box: HTMLElement): void {
 export function renderJourney(box: HTMLElement, t: string): void {
   const st = computeStats(S, t);
   const days = Array.from({ length: CHART_DAYS }, (_, i) => addDays(t, i - (CHART_DAYS - 1)));
+  const share = el("button", "btn share-btn", "📤 Share how I'm doing");
+  share.type = "button";
+  share.onclick = openShare;
+  box.append(share);
   tiles(box, st);
   xpChart(box, st, days, t);
   moodChart(box, st, days, t);

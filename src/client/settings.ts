@@ -1,4 +1,5 @@
 /** Settings dialog: theme, calendar export, backup / restore, reset. */
+import { DEMO, resetDemo } from "./demo";
 import { buildIcs } from "../core/ics";
 import type { State } from "../core/types";
 import { $, download } from "./dom";
@@ -75,6 +76,10 @@ export function initSettings(): void {
     download(JSON.stringify(S, null, 2), `quest-log-backup-${today()}.json`, "application/json");
   $("#importFile").onchange = restore;
   $("#resetBtn").onclick = () => {
+    if (DEMO) {
+      void resetDemo();
+      return;
+    }
     if (!confirm("Reset all quests, XP and loot? Consider exporting a backup first.")) return;
     reset();
     save();

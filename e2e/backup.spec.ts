@@ -50,6 +50,12 @@ async function serve(page: Page, cloud: Cloud) {
           route.fulfill({ status: 200, body: f.bytes, contentType: "application/octet-stream" })
         : json({ error: "not_found" }, 404);
     }
+    if (path === "/api/account" && method === "DELETE") {
+      const files = cloud.files.size;
+      cloud.state = null;
+      cloud.files.clear();
+      return json({ ok: true, files });
+    }
     if (media && method === "DELETE") {
       cloud.files.delete(media);
       return json({ ok: true });
@@ -96,6 +102,9 @@ async function addPhoto(page: Page, caption: string) {
   await expect(dlg).toBeHidden();
 }
 
+/** The sealed private part of the state on the server, or "" if none yet. */
+const sealedPart = (cloud: Cloud) => (cloud.state?.state as { vault?: string } | undefined)?.vault ?? "";
+
 const syncCode = (page: Page) =>
   page.evaluate(() => (JSON.parse(localStorage.getItem("quest-log-sync") ?? "{}") as { code?: string }).code ?? "");
 
@@ -119,10 +128,12 @@ test("a second device linked with the code gets the moment, file and all", async
   const cloud = newCloud();
   const phone = await device(browser, cloud);
   await turnOnSync(phone);
+  await expect.poll(() => sealedPart(cloud)).not.toBe("");
+  const sealedBefore = sealedPart(cloud);
   await addPhoto(phone, "Bash at the lake");
   await expect.poll(() => cloud.files.size).toBe(1);
-  // Let the state with the new moment reach the cloud too.
-  await expect.poll(() => JSON.stringify(cloud.state ?? {})).toContain("Bash at the lake");
+  // Let the state with the new moment reach the cloud too (sealed, so wait for the sealed part to change).
+  await expect.poll(() => sealedPart(cloud)).not.toBe(sealedBefore);
 
   const laptop = await device(browser, cloud, await syncCode(phone));
   await laptop.getByRole("button", { name: "Settings" }).click();
@@ -169,4 +180,56 @@ test("a check-in's picture is backed up encrypted, and removed when the check-in
   await del.click();
   await del.click();
   await expect.poll(() => cloud.files.size).toBe(0);
+});
+
+test("check-ins, notes and moments reach the server sealed, and a linked device opens them", async ({ browser }) => {
+  const cloud = newCloud();
+  const phone = await device(browser, cloud);
+  await turnOnSync(phone);
+  await logMood(phone, "3 out of 10, Rough", { note: "slept on the beach", sleep: "about 6 hours" });
+  await phone.getByRole("button", { name: "Collect" }).click();
+  await addPhoto(phone, "Bash at the lake");
+  // Wait until the server has the phone's latest save (sync waits a moment after the last change).
+  const savedAt = () =>
+    phone.evaluate(
+      () => (JSON.parse(localStorage.getItem("quest-log-v2") ?? "{}") as { updatedAt?: number }).updatedAt,
+    );
+  await expect.poll(async () => cloud.state?.updatedAt === (await savedAt()) && sealedPart(cloud) !== "").toBe(true);
+  const onServer = JSON.stringify(cloud.state);
+  for (const secret of ["slept on the beach", "about 6 hours", "Bash at the lake"])
+    expect(onServer).not.toContain(secret);
+  expect(onServer).toContain('"moods":[]');
+  expect(onServer).toContain("Check off this quest"); // quests stay readable for reminders and Claude
+
+  const laptop = await device(browser, cloud, await syncCode(phone));
+  await laptop.getByRole("button", { name: "Settings" }).click();
+  await laptop.getByRole("button", { name: "Link with a code" }).click();
+  await expect(laptop.locator("#syncStatus")).toContainText("synced");
+  await laptop.keyboard.press("Escape");
+  await laptop.getByRole("tab", { name: "Journey" }).click();
+  await expect(laptop.locator(".log")).toContainText("Mood 3/10 · Rough · Sleep: about 6 hours · slept on the beach");
+  await expect(laptop.locator(".moments")).toContainText("Bash at the lake");
+});
+
+test("Delete my data removes everything from the server, turns sync off, and keeps it all on the device", async ({
+  browser,
+}) => {
+  const cloud = newCloud();
+  const phone = await device(browser, cloud);
+  await turnOnSync(phone);
+  await addPhoto(phone, "Bash at the lake");
+  await expect.poll(() => cloud.files.size).toBe(1);
+  await phone.getByRole("button", { name: "Settings" }).click();
+  const del = phone.getByRole("button", { name: "Delete my data from the server" });
+  await del.click();
+  await expect(phone.locator("#syncDelete")).toHaveText("Tap again: delete everything on the server");
+  expect(cloud.state).not.toBeNull(); // one tap does nothing
+  await phone.locator("#syncDelete").click();
+  await expect.poll(() => cloud.state).toBeNull();
+  expect(cloud.files.size).toBe(0);
+  await expect(phone.getByRole("button", { name: "Turn on sync" })).toBeVisible();
+  await expect(phone.locator("#toast")).toContainText("Everything is still here on this device.");
+  await phone.keyboard.press("Escape");
+  await phone.getByRole("tab", { name: "Journey" }).click();
+  await expect(phone.locator(".moments")).toContainText("Bash at the lake");
 });

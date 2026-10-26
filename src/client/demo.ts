@@ -89,8 +89,12 @@ export function showDemoBanner(onReset: () => void): void {
   bar.className = "demo-banner";
   bar.setAttribute("aria-label", "Demo");
   const text = document.createElement("span");
-  text.innerHTML =
-    "<b>Demo</b> · a sample life, kept in this browser only. Check things off, log a mood, see what comes back.";
+  const strong = document.createElement("b");
+  strong.textContent = "Demo";
+  text.append(
+    strong,
+    " · a sample life, kept in this browser only. Check things off, log a mood, see what comes back.",
+  );
   const reset = document.createElement("button");
   reset.type = "button";
   reset.className = "btn small ghost";

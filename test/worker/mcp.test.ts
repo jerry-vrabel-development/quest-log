@@ -180,3 +180,21 @@ describe("tools", () => {
     expect(r.result.content[0].text).toMatch(/turn on sync/);
   });
 });
+
+describe("with check-ins sealed on the device", () => {
+  beforeEach(async () => {
+    await env.DB.prepare("DELETE FROM users").run();
+    userId = await seedUser(env.DB, {
+      ...emptyState({ quests: [quest(1, { name: "Walk Bash" })] }),
+      vault: "c2VhbGVk",
+    } as State);
+  });
+
+  it("logging a check-in keeps the sealed part, and the summary says what Claude can't see", async () => {
+    await tool("log_mood", { value: 6, note: "via Claude" });
+    const S = (await state()) as State & { vault?: string };
+    expect(S.vault).toBe("c2VhbGVk");
+    expect(S.moods.map((m) => m.v)).toEqual([6]); // readable only until the app next syncs
+    expect((await tool("get_summary", { days: 1 })).text).toContain("end-to-end encrypted on the user's device");
+  });
+});

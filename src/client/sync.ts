@@ -276,12 +276,10 @@ async function deleteServerData(): Promise<void> {
     return;
   }
   armDelete(false);
-  let ok = false;
-  try {
-    ok = (await apiFetch("/api/account", { method: "DELETE" })).ok;
-  } catch {
-    ok = false;
-  }
+  const ok = await apiFetch("/api/account", { method: "DELETE" }).then(
+    (res) => res.ok,
+    () => false, // offline, or the server didn't answer
+  );
   if (!ok) {
     toast("sync", "Couldn't delete", "The server didn't answer. Nothing was changed; try again when you're online.");
     return;

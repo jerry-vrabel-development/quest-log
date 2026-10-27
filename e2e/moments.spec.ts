@@ -17,7 +17,6 @@ const PHOTO = Buffer.from(
 );
 
 test.beforeEach(async ({ page }) => {
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.addInitScript(() => {
     Math.random = () => 0.5;
     if (localStorage.getItem("quest-log-splash") === null) localStorage.setItem("quest-log-splash", "0");

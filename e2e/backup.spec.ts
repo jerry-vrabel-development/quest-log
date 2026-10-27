@@ -18,7 +18,6 @@ interface Cloud {
 const newCloud = (): Cloud => ({ state: null, files: new Map(), auth: new Set() });
 
 async function serve(page: Page, cloud: Cloud) {
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const path = new URL(req.url()).pathname;

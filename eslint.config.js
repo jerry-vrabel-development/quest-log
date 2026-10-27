@@ -1,8 +1,9 @@
 import js from "@eslint/js";
+import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-export default tseslint.config(
+export default defineConfig(
   {
     ignores: [
       "node_modules/",
@@ -17,7 +18,7 @@ export default tseslint.config(
     ],
   },
   js.configs.recommended,
-  ...tseslint.configs.strictTypeChecked,
+  tseslint.configs.strictTypeChecked,
   {
     languageOptions: {
       parserOptions: {

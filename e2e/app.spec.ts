@@ -11,8 +11,6 @@ declare global {
 }
 
 test.beforeEach(async ({ page }) => {
-  // Keep tests hermetic: no web fonts from the network.
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   // Record sounds instead of playing them: the marker is a noise buffer, rewards are oscillators.
   await page.addInitScript(() => {
     // Deterministic loot: 0.5 always rolls a common drop, so jackpots come only from the rules under test.

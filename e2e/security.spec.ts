@@ -9,7 +9,6 @@ const PHOTO = fileURLToPath(new URL("fixtures/lake.png", import.meta.url));
 const CLIP = fileURLToPath(new URL("fixtures/clip-2s.webm", import.meta.url));
 
 test.beforeEach(async ({ page }) => {
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.addInitScript(() => {
     Math.random = () => 0.5;
     for (const k of ["quest-log-splash", "quest-log-demo:quest-log-splash"])
@@ -33,6 +32,26 @@ test("the app is served with strict security headers", async ({ page }) => {
   expect(h["x-content-type-options"]).toBe("nosniff");
   expect(h["referrer-policy"]).toBe("no-referrer");
   expect((await page.request.get("/_headers")).status()).toBe(404);
+});
+
+test("the app loads only from its own site, fonts included", async ({ page, baseURL }) => {
+  const home = new URL(baseURL ?? "http://localhost").origin;
+  const elsewhere: string[] = [];
+  page.on("request", (r) => {
+    const url = new URL(r.url());
+    if (!["http:", "https:"].includes(url.protocol)) return; // blob: and data: stay on the device
+    if (url.origin !== home) elsewhere.push(r.url());
+  });
+  await page.goto("/");
+  await page.evaluate(() => document.fonts.ready);
+  const loaded = await page.evaluate(() =>
+    [...document.fonts].filter((f) => f.status === "loaded").map((f) => `${f.family} ${f.weight}`),
+  );
+  expect(loaded).toEqual(expect.arrayContaining(["Space Grotesk 400", "JetBrains Mono 500"]));
+  expect(elsewhere).toEqual([]);
+  const csp = (await page.request.get("/")).headers()["content-security-policy"];
+  expect(csp).toContain("font-src 'self'");
+  expect(csp).not.toContain("https:");
 });
 
 test("nothing the app does breaks its Content-Security-Policy", async ({ page }) => {

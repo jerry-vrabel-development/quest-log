@@ -1,9 +1,8 @@
 /** The app's single state object, persisted to localStorage. */
 import { localYmd } from "../core/dates";
-import { demoState } from "../core/demo";
 import { freshState, upgradeState } from "../core/state";
 import type { State, When } from "../core/types";
-import { DEMO, NS } from "./demo";
+import { NS } from "./demo";
 
 const KEY = NS + "quest-log-v2";
 
@@ -22,19 +21,14 @@ export function setState(next: unknown): void {
   S = upgradeState(next);
 }
 
-/** A fresh start: the starter quests, or in the demo, the sample life. */
-const fresh = (): State => (DEMO ? demoState(today()) : freshState(today()));
-
-/** True when load() had nothing saved and started fresh (the demo then draws its sample photos). */
-export let startedFresh = false;
+/** A fresh start: the starter quests, at level 1 with nothing logged (the demo starts here too). */
+const fresh = (): State => freshState(today());
 
 export function load(): void {
   try {
     const raw = localStorage.getItem(KEY);
-    startedFresh = !raw;
     setState(raw ? JSON.parse(raw) : fresh());
   } catch {
-    startedFresh = true;
     setState(fresh());
   }
 }

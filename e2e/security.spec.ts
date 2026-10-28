@@ -83,16 +83,9 @@ test("nothing the app does breaks its Content-Security-Policy", async ({ page })
   await page.getByRole("button", { name: "Settings" }).click();
   await page.keyboard.press("Escape");
 
-  await page.goto("/?demo"); // drawn sample pictures, banner
-  await page.getByRole("tab", { name: "Journey" }).click();
-  await expect
-    .poll(() =>
-      page
-        .locator(".moments img")
-        .first()
-        .evaluate((i: HTMLImageElement) => i.naturalWidth),
-    )
-    .toBeGreaterThan(0);
+  await page.goto("/?demo"); // the banner and Reset
+  await page.getByRole("button", { name: "Reset demo" }).click();
+  await expect(page.locator("#lvl")).toHaveText("Level 1");
 
   expect(await violations(page)).toEqual([]);
 });

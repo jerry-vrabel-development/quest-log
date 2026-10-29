@@ -35,7 +35,7 @@ export let SYNC: SyncSettings = (() => {
   }
 })();
 
-type SyncStatus = "" | "synced" | "offline" | "error";
+type SyncStatus = "" | "synced" | "offline" | "error" | "waiting a minute";
 
 /** Called after each successful sync with the server, and when sync is turned off. */
 const syncListeners: (() => void)[] = [];
@@ -96,11 +96,29 @@ async function openState(code: string, remote: SharedState): Promise<State | nul
   }
 }
 
-export function apiFetch(path: string, opts: RequestInit = {}): Promise<Response> {
+/** After the server says "too many requests" (429), nothing is sent until this time (#64). */
+let pausedUntil = 0;
+export const pausedFor = (): number => Math.max(0, pausedUntil - Date.now());
+
+export async function apiFetch(path: string, opts: RequestInit = {}): Promise<Response> {
+  if (pausedFor() > 0) {
+    // Back off without touching the network: answer as the server would.
+    const retry = String(Math.ceil(pausedFor() / 1000));
+    return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429, headers: { "retry-after": retry } });
+  }
   const headers = new Headers(opts.headers);
   if (!headers.has("content-type")) headers.set("content-type", "application/json");
   headers.set("Authorization", `Bearer ${SYNC.code ?? ""}`);
-  return fetch(path, { ...opts, headers });
+  const res = await fetch(path, { ...opts, headers });
+  if (res.status === 429) pausedUntil = Date.now() + (Number(res.headers.get("retry-after")) || 60) * 1000;
+  return res;
+}
+
+/** Waits out a rate limit, then tries the upload again. */
+function retryAfterPause(): void {
+  setSyncStatus("waiting a minute");
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => void pushState(), pausedFor() + 500);
 }
 
 function setSyncStatus(s: SyncStatus): void {
@@ -136,6 +154,10 @@ export async function pushState(force = false): Promise<void> {
       await pullState();
       return;
     }
+    if (res.status === 429) {
+      retryAfterPause();
+      return;
+    }
     setSyncStatus(res.ok ? "synced" : "error");
   } catch {
     setSyncStatus("offline");
@@ -150,6 +172,10 @@ export async function pullState(): Promise<void> {
     if (res.status === 404) {
       await pushState(true); // first device: upload
       synced();
+      return;
+    }
+    if (res.status === 429) {
+      retryAfterPause();
       return;
     }
     if (!res.ok) {

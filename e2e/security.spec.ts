@@ -84,9 +84,15 @@ test("nothing the app does breaks its Content-Security-Policy", async ({ page })
   await page.keyboard.press("Escape");
 
   await page.goto("/?demo"); // the banner and Reset
-  await page.getByRole("button", { name: "Reset demo" }).click();
+  await expect(page.getByRole("complementary", { name: "Demo" })).toBeVisible();
+  expect(await violations(page)).toEqual([]); // before Reset reloads the page (and the log with it)
+  // Reset clears the demo's storage, then reloads: wait for that reload before reading the page again.
+  await Promise.all([
+    page.waitForEvent("framenavigated", { predicate: (f) => f === page.mainFrame() }),
+    page.getByRole("button", { name: "Reset demo" }).click(),
+  ]);
+  await page.waitForLoadState("load");
   await expect(page.locator("#lvl")).toHaveText("Level 1");
-
   expect(await violations(page)).toEqual([]);
 });
 

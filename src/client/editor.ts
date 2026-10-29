@@ -1,6 +1,7 @@
 /** The add / edit quest dialog. */
 import { buildIcs, slug } from "../core/ics";
 import { DEFAULT_CATEGORY } from "../core/quests";
+import { describeQuickAdd, parseQuickAdd, understoodSomething, type QuickAdd } from "../core/quickadd";
 import { DEFAULT_XP } from "../core/rules";
 import { REPEATS, type Quest, type Repeat } from "../core/types";
 import { $, download } from "./dom";
@@ -25,6 +26,35 @@ const nameField = (f: EditorForm) => f.elements.namedItem("name") as HTMLInputEl
 const dialog = () => $<HTMLDialogElement>("#editor");
 
 let editing: Quest | null = null;
+let quick: QuickAdd | null = null;
+
+/** New quests only: shows what the Quest field's words mean as a schedule, without changing anything yet. */
+function previewQuick(): void {
+  const f = form();
+  const box = $("#quickBox");
+  quick = editing ? null : parseQuickAdd(nameField(f).value, today());
+  if (!quick || !understoodSomething(quick) || !quick.name) {
+    box.hidden = true;
+    quick = null;
+    return;
+  }
+  $("#quickPreview").textContent = `Understood: ${quick.name} · ${describeQuickAdd(quick, today())}`;
+  box.hidden = false;
+}
+
+/** Applies the previewed schedule to the form. */
+function useQuick(): void {
+  const q = quick;
+  if (!q) return;
+  const f = form();
+  nameField(f).value = q.name;
+  if (q.due) f.due.value = q.due;
+  if (q.time) f.time.value = q.time;
+  if (q.repeat) f.repeat.value = q.repeat;
+  $("#quickBox").hidden = true;
+  quick = null;
+  nameField(f).focus();
+}
 
 /** Opens the editor; pass null to add a new quest. */
 export function openEditor(q: Quest | null): void {
@@ -40,6 +70,9 @@ export function openEditor(q: Quest | null): void {
   f.repeat.value = q ? q.repeat : "none";
   f.remind.value = String(q ? q.remind : 0);
   $("#edDelete").hidden = !q;
+  $("#quickHint").hidden = !!q;
+  $("#quickBox").hidden = true;
+  quick = null;
   $("#edIcs").hidden = !q?.due;
   const categories = [...new Set(S.quests.map((x) => x.g).filter(Boolean))];
   $("#cats").replaceChildren(...categories.map((c) => Object.assign(document.createElement("option"), { value: c })));
@@ -74,6 +107,8 @@ function onClose(): void {
 
 export function initEditor(): void {
   dialog().addEventListener("close", onClose);
+  nameField(form()).addEventListener("input", previewQuick);
+  $("#quickUse").onclick = useQuick;
   $("#edDelete").onclick = () => {
     const q = editing;
     if (!q || !confirm(`Delete "${q.name}"?`)) return;

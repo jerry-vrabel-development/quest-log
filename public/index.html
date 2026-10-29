@@ -103,8 +103,18 @@
       <form method="dialog" id="editForm">
         <h2 id="edTitle">New quest</h2>
         <label
-          >Quest<input name="name" required maxlength="120" placeholder="Something small you can actually do"
+          >Quest<input
+            name="name"
+            required
+            maxlength="120"
+            placeholder="Something small you can actually do"
+            aria-describedby="quickHint"
         /></label>
+        <p class="hint" id="quickHint">Tip: type a time too, like "call dentist tomorrow 10am".</p>
+        <div class="quick" id="quickBox" hidden>
+          <p id="quickPreview" role="status" aria-live="polite"></p>
+          <button type="button" class="btn small" id="quickUse">Use this</button>
+        </div>
         <label
           >Tiny first step <span class="hint">(what to do when you're frozen)</span
           ><input name="tiny" maxlength="160" placeholder="e.g. just open the page"

@@ -19,7 +19,7 @@ export function showDemoBanner(onReset: () => void): void {
   strong.textContent = "Demo";
   text.append(
     strong,
-    " · a fresh start to play with, kept in this browser only. Nothing here counts; Reset starts over.",
+    " · a fresh start to play with, kept in this browser only. Nothing here counts; Reset starts over. The real app can also connect to an AI assistant like Claude.",
   );
   const reset = document.createElement("button");
   reset.type = "button";

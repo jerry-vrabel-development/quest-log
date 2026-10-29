@@ -44,8 +44,11 @@ test("the app loads only from its own site, fonts included", async ({ page, base
   });
   await page.goto("/");
   await page.evaluate(() => document.fonts.ready);
-  const loaded = await page.evaluate(() =>
-    [...document.fonts].filter((f) => f.status === "loaded").map((f) => `${f.family} ${f.weight}`),
+  const loaded = await page.evaluate(
+    () =>
+      [...document.fonts]
+        .filter((f) => f.status === "loaded")
+        .map((f) => `${f.family.replace(/^"|"$/g, "")} ${f.weight}`), // Safari quotes family names
   );
   expect(loaded).toEqual(expect.arrayContaining(["Space Grotesk 400", "JetBrains Mono 500"]));
   expect(elsewhere).toEqual([]);
@@ -54,7 +57,7 @@ test("the app loads only from its own site, fonts included", async ({ page, base
   expect(csp).not.toContain("https:");
 });
 
-test("nothing the app does breaks its Content-Security-Policy", async ({ page }) => {
+test("nothing the app does breaks its Content-Security-Policy", async ({ page, browserName }) => {
   await page.goto("/");
   await page.getByLabel("Complete Check off this quest").click(); // chest, confetti
   await page.getByRole("button", { name: "Collect" }).click();
@@ -69,11 +72,14 @@ test("nothing the app does breaks its Content-Security-Policy", async ({ page })
   await dlg.getByLabel("🎬 Video").check();
   await dlg.getByLabel(/^Video/).setInputFiles(CLIP);
   await expect(dlg.locator("#momentVideoPreview")).toBeVisible();
-  await dlg.getByLabel("🎙️ Recording").check();
-  await dlg.locator("#recordBtn").click();
-  await page.waitForTimeout(600);
-  await dlg.locator("#recordBtn").click();
-  await expect(dlg.locator("#recordPreview")).toBeVisible();
+  if (browserName !== "webkit") {
+    // WebKit has no fake microphone; recording is covered on Chromium.
+    await dlg.getByLabel("🎙️ Recording").check();
+    await dlg.locator("#recordBtn").click();
+    await page.waitForTimeout(600);
+    await dlg.locator("#recordBtn").click();
+    await expect(dlg.locator("#recordPreview")).toBeVisible();
+  }
   await dlg.getByRole("button", { name: "Cancel" }).click();
 
   await page.getByRole("button", { name: "📤 Share how I'm doing" }).click();

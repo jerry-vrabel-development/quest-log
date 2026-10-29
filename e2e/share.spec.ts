@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     Math.random = () => 0.5;
     if (localStorage.getItem("quest-log-splash") === null) localStorage.setItem("quest-log-splash", "0");
+    if (localStorage.getItem("quest-log-welcome") === null) localStorage.setItem("quest-log-welcome", "0");
     // Stand-in for the phone's share sheet: remember what would have been shared.
     const w = window as unknown as { shared: ShareData[] };
     w.shared = [];

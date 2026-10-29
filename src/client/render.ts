@@ -4,6 +4,7 @@ import { byCategory, nowView, rollMissed, upcoming } from "../core/quests";
 import { bestStreak, level, streak } from "../core/rules";
 import { comebackFor } from "../core/streaks";
 import type { Quest } from "../core/types";
+import { greeting } from "../core/welcome";
 import { setQuestDone } from "./actions";
 import { $, el, fmtDue, REPEAT_LABEL } from "./dom";
 import { openEditor } from "./editor";
@@ -79,6 +80,8 @@ function renderHud(t: string): void {
   $("#bar").style.width = (lv.into / lv.need) * 100 + "%";
   $("#streak").textContent = streakLine(t);
   $("#today-count").textContent = S.days.includes(t) ? "You moved today ✓" : "";
+  const g = document.querySelector("#greeting");
+  if (g) g.textContent = greeting(S.profile?.name, new Date().getHours());
 }
 
 function renderNow(box: HTMLElement, t: string): void {

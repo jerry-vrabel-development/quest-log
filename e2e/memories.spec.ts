@@ -7,6 +7,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     Math.random = () => 0.5;
     if (localStorage.getItem("quest-log-splash") === null) localStorage.setItem("quest-log-splash", "0");
+    if (localStorage.getItem("quest-log-welcome") === null) localStorage.setItem("quest-log-welcome", "0");
   });
   page.on("dialog", (d) => d.accept(""));
   await page.goto("/");

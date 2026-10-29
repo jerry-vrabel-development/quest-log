@@ -71,8 +71,22 @@ export function loadMediaIndex(): Promise<void> {
 
 export const hasLocalMedia = (id: string): boolean => local.has(id);
 
+/**
+ * How a file is kept: its bytes and type, not the Blob itself. Safari can't store Blobs in
+ * IndexedDB in private browsing (and some WebKit builds can't at all), but every browser can
+ * store an ArrayBuffer. Files saved earlier as Blobs still read back fine.
+ */
+interface StoredFile {
+  type: string;
+  bytes: ArrayBuffer;
+}
+
+const isStoredFile = (v: unknown): v is StoredFile =>
+  typeof v === "object" && v !== null && (v as StoredFile).bytes instanceof ArrayBuffer;
+
 export async function saveMedia(id: string, blob: Blob): Promise<void> {
-  await run("readwrite", (s) => s.put(blob, id));
+  const record: StoredFile = { type: blob.type, bytes: await blob.arrayBuffer() };
+  await run("readwrite", (s) => s.put(record, id));
   local.add(id);
   // Ask the browser to keep this storage, so files aren't cleared to free space.
   if ("storage" in navigator && "persist" in navigator.storage) void navigator.storage.persist();
@@ -80,7 +94,9 @@ export async function saveMedia(id: string, blob: Blob): Promise<void> {
 
 export async function getMedia(id: string): Promise<Blob | undefined> {
   try {
-    return (await run("readonly", (s) => s.get(id))) as Blob | undefined;
+    const v: unknown = await run("readonly", (s) => s.get(id));
+    if (isStoredFile(v)) return new Blob([v.bytes], { type: v.type });
+    return v instanceof Blob ? v : undefined; // saved by an older version
   } catch {
     return undefined;
   }

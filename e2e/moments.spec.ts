@@ -330,6 +330,12 @@ test("on a hard day, a video you saved comes back in the chest, ready to play", 
 });
 
 test("a big phone video is shrunk on the device before it's saved, sound and all", async ({ page }) => {
+  const canRecord = await page.evaluate(
+    () => typeof MediaRecorder !== "undefined" && "captureStream" in HTMLCanvasElement.prototype,
+  );
+  // Real iPhone Safari records MP4 and shrinks; Playwright's WebKit build can't record, so the app
+  // keeps the original there (covered by the other video tests).
+  test.skip(!canRecord, "this browser can't record video, so there's nothing to shrink with");
   const dlg = await addVideoMoment(page, BIG_CLIP, "Bash in 1080p");
   await expect(dlg.locator("#videoStatus")).toContainText("Making it smaller");
   // Save waits while it works.

@@ -333,7 +333,7 @@ test("a GIF can say it instead: kept as a GIF, shown with the check-in in Journe
         open.onsuccess = () => {
           const all = open.result.transaction("photos").objectStore("photos").getAll();
           all.onsuccess = () => {
-            resolve((all.result as Blob[]).map((b) => b.type).join(","));
+            resolve((all.result as { type: string }[]).map((b) => b.type).join(","));
           };
         };
       }),

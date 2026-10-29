@@ -44,8 +44,11 @@ test("the app loads only from its own site, fonts included", async ({ page, base
   });
   await page.goto("/");
   await page.evaluate(() => document.fonts.ready);
-  const loaded = await page.evaluate(() =>
-    [...document.fonts].filter((f) => f.status === "loaded").map((f) => `${f.family} ${f.weight}`),
+  const loaded = await page.evaluate(
+    () =>
+      [...document.fonts]
+        .filter((f) => f.status === "loaded")
+        .map((f) => `${f.family.replace(/^"|"$/g, "")} ${f.weight}`), // Safari quotes family names
   );
   expect(loaded).toEqual(expect.arrayContaining(["Space Grotesk 400", "JetBrains Mono 500"]));
   expect(elsewhere).toEqual([]);

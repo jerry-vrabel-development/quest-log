@@ -222,7 +222,8 @@ test("a song can carry its local music file, which plays back from Journey", asy
   await noAxeViolations(page);
 });
 
-test("a recording made in the app is saved and plays back", async ({ page }) => {
+test("a recording made in the app is saved and plays back", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "WebKit has no fake microphone to record from");
   await page.getByRole("tab", { name: "Journey" }).click();
   await page.getByRole("button", { name: "Add a moment" }).click();
   const dlg = page.locator("#momentDialog");

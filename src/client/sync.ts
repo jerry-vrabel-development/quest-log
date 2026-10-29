@@ -7,6 +7,7 @@ import { isPrivateBundle, mergeState, splitState, type SharedState } from "../co
 import type { State } from "../core/types";
 import { seal, unseal, vaultKey } from "../core/vault";
 import { processRewards } from "./actions";
+import { initAssistant, updateAssistantUI } from "./assistant";
 import { DEMO } from "./demo";
 import { $ } from "./dom";
 import { hasNotif } from "./reminders";
@@ -241,6 +242,7 @@ export function updateSyncUI(): void {
   if (!box) return;
   box.hidden = DEMO || !onServer();
   const on = !!SYNC.code;
+  updateAssistantUI(!box.hidden, on);
   const pushText =
     SYNC.push ? "on"
     : hasNotif && Notification.permission === "granted" ? "not set up"
@@ -293,6 +295,7 @@ async function deleteServerData(): Promise<void> {
 }
 
 export function initSync(): void {
+  initAssistant(() => SYNC.code);
   if (DEMO) {
     // The demo never talks to the server, and never touches the service worker's config (shared with the real app).
     $("#syncBox").hidden = true;

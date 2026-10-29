@@ -13,12 +13,13 @@ import {
   takeOutbox,
 } from "./db";
 import { json, readJson, userIdFromRequest } from "./http";
+import { overLimit, tooMany, type LimitEnv } from "./limits";
 import { deleteAllMedia, handleMediaItem, listMedia } from "./media";
 import { pushUser, type PushSender } from "./push";
 
 export const MAX_STATE_BYTES = 1_000_000;
 
-export type ApiEnv = Pick<Env, "DB" | "MEDIA" | "VAPID_PUBLIC_KEY" | "VAPID_PRIVATE_JWK" | "VAPID_SUBJECT">;
+export type ApiEnv = Pick<Env, "DB" | "MEDIA" | "VAPID_PUBLIC_KEY" | "VAPID_PRIVATE_JWK" | "VAPID_SUBJECT"> & LimitEnv;
 export interface ApiDeps {
   push: PushSender;
 }
@@ -133,6 +134,8 @@ export async function handleApi(req: Request, env: ApiEnv, deps: ApiDeps = { pus
   if (!handler && mediaId === undefined) return json({ error: "not_found" }, 404);
   const userId = await userIdFromRequest(req);
   if (!userId) return json({ error: "unauthorized" }, 401);
+  if (await overLimit(env.API_LIMIT, userId)) return tooMany();
+  if (mediaId !== undefined && req.method === "PUT" && (await overLimit(env.MEDIA_LIMIT, userId))) return tooMany();
   try {
     if (mediaId !== undefined) return await handleMediaItem(req, env, userId, mediaId);
     if (!handler) return json({ error: "not_found" }, 404);

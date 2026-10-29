@@ -8,6 +8,7 @@
 import { OAuthProvider, type OAuthProviderOptions } from "@cloudflare/workers-oauth-provider";
 import { handleApi } from "./api";
 import { handleAuthorize, type GrantProps } from "./authorize";
+import { clientIp, overLimit, tooMany } from "./limits";
 import { handleMcp } from "./mcp/server";
 import { runReminders } from "./reminders";
 
@@ -40,7 +41,11 @@ export function providerFor(origin: string): OAuthProvider<Env> {
     provider = new OAuthProvider<Env>({
       ...OAUTH_OPTIONS,
       apiHandler: {
-        fetch: (req: Request, env: Env, ctx: ExecutionContext & { props?: GrantProps }) => handleMcp(req, env, ctx),
+        fetch: async (req: Request, env: Env, ctx: ExecutionContext & { props?: GrantProps }) => {
+          const user = ctx.props?.userId;
+          if (user && (await overLimit(env.MCP_LIMIT, user))) return tooMany();
+          return handleMcp(req, env, ctx);
+        },
       },
       defaultHandler: app,
       resourceMetadata: { resource: `${origin}/mcp`, authorization_servers: [origin], resource_name: "Quest Log" },
@@ -50,9 +55,15 @@ export function providerFor(origin: string): OAuthProvider<Env> {
   return provider;
 }
 
+/** Sign-in routes have no account yet, so they're limited per IP. */
+const AUTH_ROUTES = new Set(["POST /authorize", "POST /oauth/register"]);
+
 export default {
-  fetch(req, env, ctx) {
-    return providerFor(new URL(req.url).origin).fetch(req, env, ctx);
+  async fetch(req, env, ctx) {
+    const url = new URL(req.url);
+    if (AUTH_ROUTES.has(`${req.method} ${url.pathname}`) && (await overLimit(env.AUTH_LIMIT, clientIp(req))))
+      return tooMany();
+    return providerFor(url.origin).fetch(req, env, ctx);
   },
   scheduled(_controller, env, ctx) {
     ctx.waitUntil(runReminders(env, Date.now()));

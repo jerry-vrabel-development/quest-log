@@ -35,6 +35,13 @@
       "bucket_name": "quest-log-media",
     },
   ],
+  // Rate limits (#64, src/worker/limits.ts). namespace_id is any number unique in the account.
+  "ratelimits": [
+    { "name": "API_LIMIT", "namespace_id": "6401", "simple": { "limit": 120, "period": 60 } },
+    { "name": "MEDIA_LIMIT", "namespace_id": "6402", "simple": { "limit": 30, "period": 60 } },
+    { "name": "MCP_LIMIT", "namespace_id": "6403", "simple": { "limit": 60, "period": 60 } },
+    { "name": "AUTH_LIMIT", "namespace_id": "6404", "simple": { "limit": 10, "period": 60 } },
+  ],
   "kv_namespaces": [
     {
       "binding": "OAUTH_KV",

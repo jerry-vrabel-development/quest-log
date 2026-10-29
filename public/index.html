@@ -378,6 +378,39 @@
             <button type="button" class="btn small ghost danger" id="syncDelete">Delete my data from the server</button>
           </div>
         </div>
+        <div class="set-block" id="assistBox" hidden>
+          <div>
+            <b id="assistTitle">Connect an AI assistant</b>
+            <p class="hint">
+              Ask Claude (or another assistant that supports connectors) to add, schedule and check off quests for you,
+              right from a conversation.
+            </p>
+          </div>
+          <div id="assistOff">
+            <p class="hint">First, turn on sync above. Your assistant connects to your synced quests.</p>
+          </div>
+          <ol class="assist-steps" id="assistSteps" aria-labelledby="assistTitle" hidden>
+            <li>
+              In your assistant, open its connector settings. In Claude:
+              <b>Settings → Connectors → Add custom connector</b>.
+            </li>
+            <li>
+              Paste this address as the connector URL:
+              <code id="assistUrl"></code>
+              <button type="button" class="btn small ghost" id="assistCopyUrl">Copy address</button>
+            </li>
+            <li>
+              Choose <b>Connect</b>. When Quest Log asks, paste your sync code.
+              <button type="button" class="btn small ghost" id="assistCopyCode">Copy sync code</button>
+            </li>
+            <li>Try it: <i>"Add a quest to drink a glass of water at 3pm."</i></li>
+          </ol>
+          <p class="hint" id="assistNote" hidden>
+            Your sync code unlocks your account, so only paste it into Quest Log's own page. Custom connectors may need
+            a paid plan with your assistant.
+          </p>
+          <p class="hint" id="assistStatus" role="status" aria-live="polite"></p>
+        </div>
         <div class="set-row">
           <div>
             <b>Send to my phone's calendar</b>

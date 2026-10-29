@@ -601,6 +601,28 @@ legend {
   flex-direction: column;
   gap: 8px;
 }
+.assist-steps {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.assist-steps .btn {
+  display: block;
+  width: fit-content;
+  margin-top: 4px;
+}
+.assist-steps code {
+  display: block;
+  margin: 4px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85em;
+}
 .set-block .btns {
   display: flex;
   flex-wrap: wrap;

@@ -5,6 +5,7 @@ import worker from "../../src/worker/worker";
 import { createD1 } from "../helpers/d1";
 import { CODE, emptyState, quest, seedUser } from "../helpers/fixtures";
 import { body } from "../helpers/http";
+import { createLimiter } from "../helpers/limits";
 
 const ORIGIN = "https://quests.test";
 const REDIRECT = "https://claude.ai/api/mcp/auth_callback";
@@ -153,6 +154,16 @@ describe("OAuth-protected MCP endpoint", () => {
       }),
     });
     expect((await body(res)).result.content[0].text).toContain("#1 Walk Bash");
+
+    // the connector has a per-account limit (#64)
+    env.MCP_LIMIT = createLimiter(0);
+    const limited = await fetchW("/mcp", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token.access_token}`, "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
+    });
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toBe("60");
   });
 
   it("passes non-MCP routes through to the app", async () => {

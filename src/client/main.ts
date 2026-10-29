@@ -21,6 +21,7 @@ import { initBackup } from "./backup";
 import { initLog } from "./log";
 import { initShare } from "./share";
 import { initSync, pullState } from "./sync";
+import { initWelcome } from "./welcome";
 
 const REMINDER_POLL_MS = 30_000;
 
@@ -41,6 +42,7 @@ initDice();
 initMoodEditor();
 initMoments();
 initSessionSounds();
+initWelcome();
 // Moment files (photos, audio) live in IndexedDB; once we know which are on this device, refresh the view.
 // Saved files are listed in the background; mark the page when that's done (tests wait on it).
 void loadMediaIndex().then(() => {

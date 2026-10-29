@@ -28,7 +28,7 @@
       <header class="top">
         <div>
           <h1>Quest Log</h1>
-          <p class="sub">Small moves count. Check one off and see what drops.</p>
+          <p class="sub"><span id="greeting"></span>Small moves count. Check one off and see what drops.</p>
         </div>
         <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙</button>
       </header>
@@ -362,6 +362,35 @@
       </form>
     </dialog>
 
+    <!-- Welcome (first launch) -->
+    <dialog id="welcome" aria-labelledby="welcomeTitle">
+      <form method="dialog" id="welcomeForm">
+        <h2 id="welcomeTitle">Welcome to Quest Log</h2>
+        <p class="hint">
+          Three quick questions so it fits you. Skip any of them; you can change this later in Settings.
+        </p>
+        <label
+          >What should we call you? <span class="hint">(optional)</span
+          ><input name="name" id="welcomeName" maxlength="40" autocomplete="given-name"
+        /></label>
+        <fieldset class="share-choice welcome-choice" id="welcomeAreas">
+          <legend>What matters right now?</legend>
+        </fieldset>
+        <label
+          >Something else that matters? <span class="hint">(optional)</span
+          ><input name="other" id="welcomeOther" maxlength="40" placeholder="e.g. Garden"
+        /></label>
+        <fieldset class="share-choice welcome-choice" id="welcomeHelps">
+          <legend>What would help most?</legend>
+        </fieldset>
+        <div class="ed-actions">
+          <span class="spacer"></span>
+          <button value="cancel" class="btn ghost" formnovalidate>Skip for now</button>
+          <button value="save" class="btn" id="welcomeSave">Make it mine</button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- Settings -->
     <dialog id="settings">
       <form method="dialog">
@@ -372,6 +401,16 @@
             <p class="hint" id="notifStatus"></p>
           </div>
           <button type="button" class="btn small" id="notifBtn2">Turn on</button>
+        </div>
+        <div class="set-row">
+          <div>
+            <b><label for="profileName">Your name</label></b>
+            <p class="hint">For the greeting. Kept private, like your check-ins.</p>
+          </div>
+          <div class="btns">
+            <input id="profileName" maxlength="40" autocomplete="given-name" />
+            <button type="button" class="btn small ghost" id="profileRerun">Run the welcome again</button>
+          </div>
         </div>
         <div class="set-block" id="syncBox" hidden>
           <div>

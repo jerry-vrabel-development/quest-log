@@ -1886,6 +1886,7 @@ a.moment-link-card:focus-visible {
   padding: 0 4px;
 }
 #shareDialog .share-choice label,
+#welcome .welcome-choice label,
 #shareDialog .share-photo {
   flex-direction: row;
   align-items: center;
@@ -1895,6 +1896,7 @@ a.moment-link-card:focus-visible {
   font-weight: 400;
 }
 #shareDialog .share-choice input,
+#welcome .welcome-choice input,
 #shareDialog .share-photo input {
   width: 1.1rem;
   height: 1.1rem;
@@ -1936,4 +1938,12 @@ a.moment-link-card:focus-visible {
 }
 .privacy li {
   margin: 6px 0;
+}
+
+/* ---------- welcome ---------- */
+#welcome .welcome-choice {
+  margin-bottom: 10px;
+}
+#greeting:not(:empty)::after {
+  content: " ";
 }

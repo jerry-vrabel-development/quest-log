@@ -17,6 +17,7 @@ test.beforeEach(async ({ page }) => {
     Math.random = () => 0.5;
     // Most tests skip the opening screen; the splash tests turn it back on.
     if (localStorage.getItem("quest-log-splash") === null) localStorage.setItem("quest-log-splash", "0");
+    if (localStorage.getItem("quest-log-welcome") === null) localStorage.setItem("quest-log-welcome", "0");
     window.__sounds = [];
     const Real = window.AudioContext;
     window.AudioContext = class extends Real {

@@ -11,7 +11,7 @@ const CLIP = fileURLToPath(new URL("fixtures/clip-2s.webm", import.meta.url));
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     Math.random = () => 0.5;
-    for (const k of ["quest-log-splash", "quest-log-demo:quest-log-splash"])
+    for (const k of ["quest-log-splash", "quest-log-demo:quest-log-splash", "quest-log-welcome"])
       if (localStorage.getItem(k) === null) localStorage.setItem(k, "0");
     const w = window as unknown as { cspViolations: string[] };
     w.cspViolations = [];

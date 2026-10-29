@@ -2,14 +2,14 @@
  * What sync shares with the server, and what stays sealed.
  *
  * Private (encrypted on the device with the sync-code key, src/core/vault.ts): check-ins (mood,
- * extras, notes, pictures), notes from past you, moments (captions, titles, links) and which
- * memories were shown. The server stores these as one opaque `vault` string it can't read.
+ * extras, notes, pictures), notes from past you, moments (captions, titles, links), which
+ * memories were shown, and the profile (name, chosen areas). The server stores these as one opaque `vault` string it can't read.
  *
  * Shared (readable by the server): quests, XP, loot, badges, streak days. Push reminders and the
  * Claude connector need them. A check-in Claude logs is readable on the server only until the
  * device next syncs; the device then folds it into the sealed part.
  */
-import type { LogEvent, Moment, Mood, State } from "./types";
+import type { LogEvent, Moment, Mood, Profile, State } from "./types";
 
 type MoodEvent = Extract<LogEvent, { t: "mood" }>;
 type Note = NonNullable<State["notes"]>[number];
@@ -24,6 +24,7 @@ export interface PrivateBundle {
   notes: Note[];
   moments: Moment[];
   memSeen: string[];
+  profile?: Profile;
 }
 
 /** A state as the server holds it: the shared part, plus the sealed private part. */
@@ -40,6 +41,7 @@ export function splitState(S: State): { shared: SharedState; secret: PrivateBund
     notes: S.notes ?? [],
     moments: S.moments ?? [],
     memSeen: S.memSeen ?? [],
+    ...(S.profile ? { profile: S.profile } : {}),
   };
   const shared: SharedState = {
     ...S,
@@ -50,6 +52,7 @@ export function splitState(S: State): { shared: SharedState; secret: PrivateBund
     memSeen: [],
   };
   delete shared.vault;
+  delete shared.profile;
   return { shared, secret };
 }
 
@@ -83,6 +86,7 @@ export function mergeState(shared: SharedState, secret: PrivateBundle | null): S
     notes: union(secret.notes, S.notes ?? [], (n) => String(n.at)),
     moments: union(secret.moments, S.moments ?? [], (m) => m.id),
     memSeen: secret.memSeen.length ? secret.memSeen : (S.memSeen ?? []),
+    ...((secret.profile ?? S.profile) ? { profile: secret.profile ?? S.profile } : {}),
   };
 }
 

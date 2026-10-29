@@ -95,6 +95,17 @@ export interface Moment {
   audio?: boolean;
 }
 
+/** Who the app is for, from the welcome flow (#84). Personal, so it's sealed with check-ins in sync. */
+export interface Profile {
+  name?: string;
+  /** Areas of life chosen in the welcome, e.g. "Health", or the user's own words. */
+  areas: string[];
+  /** What would help most: "start" (getting started when frozen), "remember", "progress". */
+  helps: string[];
+  /** When the welcome was finished or skipped (it never shows again on its own). */
+  at: number;
+}
+
 export interface State {
   v: number;
   quests: Quest[];
@@ -120,6 +131,7 @@ export interface State {
   moments?: Moment[];
   /** The day the app last invited "Save this moment?", so it asks at most once a day. */
   momentInvite?: { day: string; dismissed: boolean };
+  profile?: Profile;
   updatedAt?: number;
 }
 

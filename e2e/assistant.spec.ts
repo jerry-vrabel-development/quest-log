@@ -7,7 +7,7 @@ const CODE = "a".repeat(43);
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     Math.random = () => 0.5;
-    for (const k of ["quest-log-splash", "quest-log-demo:quest-log-splash"])
+    for (const k of ["quest-log-splash", "quest-log-demo:quest-log-splash", "quest-log-welcome"])
       if (localStorage.getItem(k) === null) localStorage.setItem(k, "0");
   });
   // A quiet stand-in for the Worker: nothing synced yet.

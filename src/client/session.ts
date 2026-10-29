@@ -24,6 +24,19 @@ export const setSplashOn = (on: boolean): void => {
 
 const splash = () => $("#splash");
 let welcomeArmed = false;
+let afterBegin: (() => void)[] = [];
+
+/** Runs `fn` once the opening screen is out of the way (right away if it isn't showing). */
+export function whenBegun(fn: () => void): void {
+  if (splash().hidden) fn();
+  else afterBegin.push(fn);
+}
+
+function runAfterBegin(): void {
+  const fns = afterBegin;
+  afterBegin = [];
+  for (const fn of fns) fn();
+}
 
 function statsLine(): string {
   const line = streakLine(today());
@@ -54,10 +67,14 @@ function begin(): void {
   setPageInert(false);
   if (prefersReducedMotion()) {
     el.hidden = true;
+    runAfterBegin();
     return;
   }
   el.classList.add("leaving");
-  setTimeout(() => (el.hidden = true), LEAVE_MS);
+  setTimeout(() => {
+    el.hidden = true;
+    runAfterBegin();
+  }, LEAVE_MS);
 }
 
 export function initSessionSounds(): void {

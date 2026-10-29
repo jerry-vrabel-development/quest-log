@@ -74,16 +74,46 @@ const times = (n: number) =>
   : n === 2 ? "twice"
   : `${String(n)} times`;
 
-/** "12 things done, including Walk Bash (6 times) and Apply to one job (5 times)". */
-function winsLine(S: State, since: string, today: string): string {
-  const done = S.log.filter((e) => e.t === "quest" && e.day >= since && e.day <= today);
-  if (!done.length) return "";
+type QuestDone = Extract<State["log"][number], { t: "quest" }>;
+
+/**
+ * Wins first, routines counted. A routine is a repeating quest, or (for a quest since deleted, whose
+ * schedule is unknown) one done more than once in the period. Everything else is a one-off win, and
+ * wins are named biggest first, so "Walk Bash (7 times)" can never crowd out "Shipped the release".
+ * Same rule as Quest Log Insights.
+ */
+export function splitWins(
+  S: State,
+  since: string,
+  today: string,
+): { done: QuestDone[]; wins: QuestDone[]; routines: [string, number][] } {
+  const done = S.log.filter((e): e is QuestDone => e.t === "quest" && e.day >= since && e.day <= today);
+  const repeating = new Set(S.quests.filter((q) => q.repeat !== "none").map((q) => q.id));
+  const known = new Set(S.quests.map((q) => q.id));
+  const counts = new Map<number, number>();
+  for (const e of done) counts.set(e.id, (counts.get(e.id) ?? 0) + 1);
+  const isRoutine = (e: QuestDone) => repeating.has(e.id) || (!known.has(e.id) && (counts.get(e.id) ?? 0) > 1);
+  const wins = done.filter((e) => !isRoutine(e)).sort((a, b) => b.xp - a.xp || a.at - b.at);
   const byName = new Map<string, number>();
-  for (const e of done) if (e.t === "quest") byName.set(e.name, (byName.get(e.name) ?? 0) + 1);
-  const top = [...byName.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
-  const named = top.map(([name, n]) => (n > 1 ? `${name} (${times(n)})` : name));
+  for (const e of done) if (isRoutine(e)) byName.set(e.name, (byName.get(e.name) ?? 0) + 1);
+  const routines = [...byName.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return { done, wins, routines };
+}
+
+const list = (xs: string[]) =>
+  xs.length <= 1 ? (xs[0] ?? "")
+  : xs.length === 2 ? `${xs[0] ?? ""} and ${xs[1] ?? ""}`
+  : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1) ?? ""}`;
+
+/** "16 things done, including Shipped the release and Applied to Rumi", plus "Kept up Walk Bash (7 times)". */
+function winsLines(S: State, since: string, today: string): { count: string; line: string; kept: string } {
+  const { done, wins, routines } = splitWins(S, since, today);
+  if (!done.length) return { count: "", line: "", kept: "" };
   const count = `${String(done.length)} thing${done.length === 1 ? "" : "s"} done`;
-  return named.length ? `${count}, including ${named.join(" and ")}` : count;
+  const named = wins.slice(0, 3).map((e) => e.name);
+  const line = named.length ? `${count}, including ${list(named)}` : count;
+  const kept = routines.length ? `Kept up ${list(routines.slice(0, 2).map(([n, k]) => `${n} (${times(k)})`))}` : "";
+  return { count, line, kept };
 }
 
 /** Builds the update. Returns "" text when there's nothing in the period to say. */
@@ -99,18 +129,19 @@ export function buildReport(
     : undefined;
 
   const mood = include.mood ? moodWords(moods, period) : "";
-  const wins = include.wins ? winsLine(S, since, today) : "";
+  const w = include.wins ? winsLines(S, since, today) : { count: "", line: "", kept: "" };
   const lead = PHRASE[period];
 
   if (tone === "short") {
-    const parts = [mood, wins && wins.split(", including")[0]].filter(Boolean);
+    const parts = [mood, w.count].filter(Boolean);
     const text = parts.length ? `${lead}: ${parts.join(". ")}.` : "";
     return { text: capitalizeAfterColon(text), ...(highlight ? { highlight } : {}) };
   }
 
   const lines: string[] = [];
   if (mood) lines.push(`${lead} ${mood}.`);
-  if (wins) lines.push(`Got ${wins}.`);
+  if (w.line) lines.push(`Got ${w.line}.`);
+  if (w.kept) lines.push(`${w.kept}.`);
   const body: string[] = [];
   const energy = include.energy ? scaleWord(moods, "energy") : "";
   const anxiety = include.anxiety ? scaleWord(moods, "anxiety") : "";

@@ -8,8 +8,23 @@ export const DEMO = new URLSearchParams(location.search).has("demo");
 /** Storage keys and the media database get this prefix in the demo, so real data is never touched. */
 export const NS = DEMO ? "quest-log-demo:" : "";
 
-/** The banner across the top of the demo: what it is, Reset, and the way out. */
+const BANNER_KEY = NS + "demo-banner";
+
+/** Whether the visitor closed the banner (it then stays closed until the demo is reset). */
+function bannerClosed(): boolean {
+  try {
+    return localStorage.getItem(BANNER_KEY) === "closed";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The banner across the top of the demo: what it is, Reset, and the way out. It can be closed,
+ * and stays closed; Reset and Leave are in Settings too.
+ */
 export function showDemoBanner(onReset: () => void): void {
+  if (bannerClosed()) return;
   // A labelled landmark, so it's reachable by region navigation like the rest of the page.
   const bar = document.createElement("aside");
   bar.className = "demo-banner";
@@ -19,7 +34,7 @@ export function showDemoBanner(onReset: () => void): void {
   strong.textContent = "Demo";
   text.append(
     strong,
-    " · a fresh start to play with, kept in this browser only. Nothing here counts; Reset starts over. The real app can also connect to an AI assistant like Claude.",
+    " · a fresh start to play with, kept in this browser only. Nothing here counts; Reset starts over. The real app can also connect to an AI assistant like Claude. Reset and Leave are in Settings too.",
   );
   const reset = document.createElement("button");
   reset.type = "button";
@@ -30,9 +45,22 @@ export function showDemoBanner(onReset: () => void): void {
   leave.href = location.pathname;
   leave.className = "btn small ghost";
   leave.textContent = "Leave demo";
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "btn small ghost";
+  close.textContent = "Close";
+  close.setAttribute("aria-label", "Close the demo banner");
+  close.onclick = () => {
+    try {
+      localStorage.setItem(BANNER_KEY, "closed");
+    } catch {
+      /* storage blocked: closes for this visit only */
+    }
+    bar.remove();
+  };
   const btns = document.createElement("span");
   btns.className = "banner-btns";
-  btns.append(reset, leave);
+  btns.append(reset, leave, close);
   bar.append(text, btns);
   document.body.prepend(bar);
 }

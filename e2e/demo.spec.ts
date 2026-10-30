@@ -77,3 +77,29 @@ test("keeps your demo changes across reloads, and Reset starts over from level 1
   await expect(page.locator("#lvl")).toHaveText("Level 1");
   await expect(page.getByLabel("Complete Check off this quest")).toBeVisible(); // open again
 });
+
+test("the banner can be closed, stays closed, and Settings still has Reset and Leave", async ({ page }) => {
+  await noServer(page);
+  await page.goto("/?demo");
+  const banner = page.getByRole("complementary", { name: "Demo" });
+  await page.getByRole("button", { name: "Close the demo banner" }).click();
+  await expect(banner).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator("#lvl")).toHaveText("Level 1");
+  await expect(banner).toHaveCount(0); // stays closed
+
+  await page.locator("#settingsBtn").click();
+  await expect(page.locator("#demoRow")).toContainText("Kept in this browser only");
+  await page.getByRole("link", { name: "Leave demo" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("#demoRow")).toBeHidden(); // never shown in the real app
+});
+
+test("Reset brings the banner back with the fresh start", async ({ page }) => {
+  await noServer(page);
+  await page.goto("/?demo");
+  await page.getByRole("button", { name: "Close the demo banner" }).click();
+  await page.locator("#settingsBtn").click();
+  await page.locator("#resetBtn").click();
+  await expect(page.getByRole("complementary", { name: "Demo" })).toBeVisible();
+});

@@ -175,7 +175,10 @@ CI runs everything on every push and pull request, including a check that `worke
 | `complete_quest` | Completes by id; repeating quests roll forward                                                          |
 | `update_quest`   | Rename, reschedule, change the tiny step, etc.                                                          |
 | `delete_quest`   | Delete by id (marked destructive)                                                                       |
-| `log_mood`       | 1–10 check-in with an optional note                                                                     |
+| `log_mood`       | 1–10 check-in with an optional note and extras; replies with the check-in's id                          |
+| `list_moods`     | Recent check-ins with ids, newest first                                                                 |
+| `edit_mood`      | Fix a check-in's value or note by id                                                                    |
+| `delete_mood`    | Delete a check-in by id; the day's XP moves to the next check-in (marked destructive)                   |
 | `get_summary`    | Level, streak, quests and mood per day over N days                                                      |
 
 **Connect it to Claude:** Settings → Connectors → **Add custom connector** → URL `https://<your-worker-host>/mcp` → Connect, then enter your sync code (in the app: Settings → Show sync code).

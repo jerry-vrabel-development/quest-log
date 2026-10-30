@@ -2,6 +2,7 @@
 // completed through Claude earns exactly what it would in the app.
 import { cleanExtras, describeExtras } from "../../core/checkin";
 import { addDays, localYmd } from "../../core/dates";
+import { NOTE_MAX, deleteMood, editMood } from "../../core/moods";
 import {
   REMIND_OPTIONS,
   ValidationError,
@@ -14,7 +15,7 @@ import {
 } from "../../core/quests";
 import { XP_VALUES, completeQuest, level, moodLabel, queueReward, recordMood, streak } from "../../core/rules";
 import { upgradeState } from "../../core/state";
-import { REPEATS, type Quest, type State } from "../../core/types";
+import { REPEATS, type Mood, type Quest, type State } from "../../core/types";
 import { getUser, putUser } from "../db";
 
 /** A problem the model can fix (bad id, bad input). Returned as an isError tool result, not a protocol error. */
@@ -52,6 +53,11 @@ const questInput = {
     },
   },
   required: ["name"],
+} as const;
+
+const moodIdInput = {
+  type: "integer",
+  description: "The check-in's id, from list_moods or the log_mood reply.",
 } as const;
 
 const idInput = { type: "object", properties: { id: { type: "integer" } }, required: ["id"] } as const;
@@ -139,6 +145,40 @@ export const TOOLS = [
     },
   },
   {
+    name: "list_moods",
+    title: "List mood check-ins",
+    description:
+      "Mood check-ins over the last N days, newest first, each with its id (for edit_mood and delete_mood), day, time, value and note.",
+    inputSchema: {
+      type: "object",
+      properties: { days: { type: "integer", minimum: 1, maximum: MAX_SUMMARY_DAYS, description: "Default 7." } },
+    },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "edit_mood",
+    title: "Edit mood check-in",
+    description:
+      "Fix a check-in's mood value or note by id. Pass only what changes; note:'' clears the note. Only change what the user asked to change.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: moodIdInput,
+        value: { type: "integer", minimum: 1, maximum: 10 },
+        note: { type: "string", maxLength: NOTE_MAX },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "delete_mood",
+    title: "Delete mood check-in",
+    description:
+      "Permanently delete a check-in by id. If it was the day's first check-in, its XP moves to the next one that day, or is taken back if it was the only one. Confirm with the user first.",
+    inputSchema: { type: "object", properties: { id: moodIdInput }, required: ["id"] },
+    annotations: { destructiveHint: true },
+  },
+  {
     name: "get_summary",
     title: "Get progress summary",
     description:
@@ -200,6 +240,26 @@ function findQuest(S: State, id: unknown): Quest {
   const q = S.quests.find((x) => x.id === Number(id));
   if (!q) throw new ToolError(`No quest with id ${String(id)}. Use list_quests to see ids.`);
   return q;
+}
+
+/** Explains why a check-in may be missing: sealed ones are only visible on the user's device. */
+function findMood(S: State, id: unknown): Mood {
+  const m = S.moods.find((x) => x.at === Number(id));
+  if (m) return m;
+  const sealed =
+    isSealed(S) ?
+      " Check-ins are end-to-end encrypted once the app syncs, so only ones logged through Claude since then can be changed here; the user can edit or delete the rest in the app (Stats)."
+    : "";
+  throw new ToolError(`No check-in with id ${String(id)}. Use list_moods to see ids.${sealed}`);
+}
+
+const isSealed = (S: State) => typeof (S as { vault?: unknown }).vault === "string";
+
+/** One check-in as a line the model can refer back to by id. */
+function describeMood(m: Mood, tz: string): string {
+  const time = new Date(m.at).toLocaleTimeString("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" });
+  const more = describeExtras(m);
+  return `id ${m.at} · ${m.day} ${time} · mood ${m.v}/10 (${moodLabel(m.v)})${more ? ` · ${more}` : ""}${m.note ? ` · "${m.note}"` : ""}`;
 }
 
 /** Completes a quest the Claude way: XP now, loot when the app next opens. */
@@ -284,7 +344,49 @@ const impl: Record<ToolName, (ctx: ToolContext, a: Args) => string | Promise<str
     if (first) queueReward(ctx.S, "Mood check-in", xp, ctx.now);
     await ctx.save();
     const more = describeExtras(extras);
-    return `Logged mood ${v}/10 (${moodLabel(v)})${more ? ` · ${more}` : ""}${note ? `: "${note}"` : ""}.${first ? ` +${xp} XP.` : ""}`;
+    const id = ctx.S.moods.at(-1)?.at ?? ctx.now;
+    return `Logged mood ${v}/10 (${moodLabel(v)})${more ? ` · ${more}` : ""}${note ? `: "${note}"` : ""}.${first ? ` +${xp} XP.` : ""} (id ${id})`;
+  },
+
+  list_moods({ S, t, tz }, a) {
+    const days = Math.min(MAX_SUMMARY_DAYS, Math.max(1, Number(a.days) || 7));
+    const since = addDays(t, -(days - 1));
+    const lines = S.moods
+      .filter((m) => m.day >= since)
+      .sort((x, y) => y.at - x.at)
+      .map((m) => describeMood(m, tz));
+    const sealed =
+      isSealed(S) ?
+        [
+          "(Check-ins are end-to-end encrypted on the user's device. Only ones logged through Claude since the app last synced show here.)",
+        ]
+      : [];
+    return [
+      `Check-ins from the last ${plural(days, "day")}:`,
+      ...(lines.length ? lines : ["  (none)"]),
+      ...sealed,
+    ].join("\n");
+  },
+
+  async edit_mood(ctx, a) {
+    const m = findMood(ctx.S, a.id);
+    const v = a.value === undefined ? m.v : Number(a.value);
+    if (a.note !== undefined && typeof a.note !== "string") throw new ToolError("note must be a string.");
+    const note = typeof a.note === "string" ? a.note : (m.note ?? "");
+    try {
+      editMood(ctx.S, m.at, { v, note });
+    } catch {
+      throw new ToolError("value must be an integer from 1 to 10.");
+    }
+    await ctx.save();
+    return `Updated ${describeMood(m, ctx.tz)}`;
+  },
+
+  async delete_mood(ctx, a) {
+    const m = findMood(ctx.S, a.id);
+    const { xpChange } = deleteMood(ctx.S, m.at) ?? { xpChange: 0 };
+    await ctx.save();
+    return `Deleted the ${m.day} check-in (mood ${m.v}/10).${xpChange ? ` ${xpChange} XP.` : ""}`;
   },
 
   get_summary({ S, t }, a) {
@@ -312,7 +414,7 @@ const impl: Record<ToolName, (ctx: ToolContext, a: Args) => string | Promise<str
       .map(([k, v]) => `${k} ${v}`)
       .join(", ");
     const sealedNote =
-      typeof (S as { vault?: unknown }).vault === "string" ?
+      isSealed(S) ?
         [
           "(Check-ins, notes and moments are end-to-end encrypted on the user's device. Only check-ins logged through Claude since the app last synced show here.)",
         ]

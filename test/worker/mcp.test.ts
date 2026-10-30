@@ -146,9 +146,10 @@ describe("tools", () => {
   it("log_mood validates the scale and only rewards the first check-in of the day", async () => {
     expect((await tool("log_mood", { value: 11 })).isError).toBe(true);
     expect((await tool("log_mood", { value: 4, note: "sore back" })).text).toBe(
-      'Logged mood 4/10 (Low): "sore back". +5 XP.',
+      `Logged mood 4/10 (Low): "sore back". +5 XP. (id ${NOW})`,
     );
-    expect((await tool("log_mood", { value: 5 })).text).toBe("Logged mood 5/10 (Meh).");
+    vi.setSystemTime(NOW + 60_000);
+    expect((await tool("log_mood", { value: 5 })).text).toBe(`Logged mood 5/10 (Meh). (id ${NOW + 60_000})`);
     const S = await state();
     expect(S.moods.map((m) => m.v)).toEqual([4, 5]);
     expect(S.xp).toBe(5);
@@ -158,10 +159,83 @@ describe("tools", () => {
     expect(
       (await tool("log_mood", { value: 3, anxiety: 4, energy: 1, focus: 9, sleep: "4 hours", note: "rough night" }))
         .text,
-    ).toBe('Logged mood 3/10 (Rough) · Anxiety: High · Energy: Empty · Sleep: 4 hours: "rough night". +5 XP.');
+    ).toBe(
+      `Logged mood 3/10 (Rough) · Anxiety: High · Energy: Empty · Sleep: 4 hours: "rough night". +5 XP. (id ${NOW})`,
+    );
     const [m] = (await state()).moods;
     expect(m).toMatchObject({ v: 3, anxiety: 4, energy: 1, sleep: "4 hours", via: "claude" });
     expect(m).not.toHaveProperty("focus");
+  });
+
+  describe("fixing check-ins", () => {
+    const MIN = 60_000;
+    /** Two check-ins today (10:00 and 10:30am) and one yesterday. */
+    beforeEach(async () => {
+      vi.setSystemTime(NOW - 24 * 60 * MIN);
+      await tool("log_mood", { value: 7, note: "yesterday" });
+      vi.setSystemTime(NOW);
+      await tool("log_mood", { value: 4, note: "typo'd" });
+      vi.setSystemTime(NOW + 30 * MIN);
+      await tool("log_mood", { value: 6, energy: 4 });
+    });
+
+    it("list_moods shows ids newest first, with the user's local time", async () => {
+      expect((await tool("list_moods", { days: 2 })).text).toBe(
+        [
+          "Check-ins from the last 2 days:",
+          `id ${NOW + 30 * MIN} · 2026-10-22 10:30 AM · mood 6/10 (Okay) · Energy: Good`,
+          `id ${NOW} · 2026-10-22 10:00 AM · mood 4/10 (Low) · "typo'd"`,
+          `id ${NOW - 24 * 60 * MIN} · 2026-10-21 10:00 AM · mood 7/10 (Decent) · "yesterday"`,
+        ].join("\n"),
+      );
+      expect((await tool("list_moods", { days: 1 })).text).not.toContain("2026-10-21");
+    });
+
+    it("edit_mood changes only what's given, in the check-in and the activity log", async () => {
+      expect((await tool("edit_mood", { id: NOW, value: 5 })).text).toBe(
+        `Updated id ${NOW} · 2026-10-22 10:00 AM · mood 5/10 (Meh) · "typo'd"`,
+      );
+      expect((await tool("edit_mood", { id: NOW, note: "fixed" })).text).toContain('mood 5/10 (Meh) · "fixed"');
+      expect((await tool("edit_mood", { id: NOW, note: "" })).text).toMatch(/mood 5\/10 \(Meh\)$/);
+      const S = await state();
+      expect(S.moods.find((m) => m.at === NOW)).toMatchObject({ v: 5, note: "" });
+      expect(S.log.find((e) => e.t === "mood" && e.at === NOW)).toMatchObject({ v: 5, note: "" });
+    });
+
+    it("edit_mood rejects bad values and unknown ids without changing anything", async () => {
+      expect(await tool("edit_mood", { id: NOW, value: 0 })).toEqual({
+        text: "value must be an integer from 1 to 10.",
+        isError: true,
+      });
+      expect((await tool("edit_mood", { id: NOW, note: 5 })).isError).toBe(true);
+      expect(await tool("edit_mood", { id: 123, value: 5 })).toEqual({
+        text: "No check-in with id 123. Use list_moods to see ids.",
+        isError: true,
+      });
+      expect((await state()).moods.find((m) => m.at === NOW)).toMatchObject({ v: 4, note: "typo'd" });
+    });
+
+    it("delete_mood moves the day's XP to the next check-in, or takes it back if it was the only one", async () => {
+      const before = (await state()).xp;
+      expect((await tool("delete_mood", { id: NOW })).text).toBe("Deleted the 2026-10-22 check-in (mood 4/10).");
+      let S = await state();
+      expect(S.xp).toBe(before);
+      expect(S.moods.map((m) => m.at)).toEqual([NOW - 24 * 60 * MIN, NOW + 30 * MIN]);
+      expect(S.log.find((e) => e.t === "mood" && e.at === NOW + 30 * MIN)).toMatchObject({ xp: 5 });
+
+      expect((await tool("delete_mood", { id: NOW - 24 * 60 * MIN })).text).toBe(
+        "Deleted the 2026-10-21 check-in (mood 7/10). -5 XP.",
+      );
+      S = await state();
+      expect(S.xp).toBe(before - 5);
+      expect((await tool("delete_mood", { id: NOW })).isError).toBe(true);
+    });
+
+    it("advertises delete_mood as destructive and list_moods as read-only", async () => {
+      const tools = TOOLS as readonly { name: string; annotations?: object }[];
+      expect(tools.find((t) => t.name === "delete_mood")?.annotations).toEqual({ destructiveHint: true });
+      expect(tools.find((t) => t.name === "list_moods")?.annotations).toEqual({ readOnlyHint: true });
+    });
   });
 
   it("get_summary reports the week", async () => {
@@ -196,5 +270,15 @@ describe("with check-ins sealed on the device", () => {
     expect(S.vault).toBe("c2VhbGVk");
     expect(S.moods.map((m) => m.v)).toEqual([6]); // readable only until the app next syncs
     expect((await tool("get_summary", { days: 1 })).text).toContain("end-to-end encrypted on the user's device");
+  });
+
+  it("can fix a check-in Claude logged, and explains why sealed ones can't be found", async () => {
+    await tool("log_mood", { value: 3 });
+    expect((await tool("list_moods")).text).toContain("end-to-end encrypted on the user's device");
+    expect((await tool("edit_mood", { id: NOW, value: 4 })).text).toContain("mood 4/10");
+    const miss = await tool("delete_mood", { id: 42 });
+    expect(miss.isError).toBe(true);
+    expect(miss.text).toMatch(/edit or delete the rest in the app/);
+    expect(((await state()) as State & { vault?: string }).vault).toBe("c2VhbGVk");
   });
 });

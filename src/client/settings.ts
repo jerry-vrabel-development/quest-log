@@ -75,6 +75,10 @@ export function initSettings(): void {
   $("#exportBtn").onclick = () =>
     download(JSON.stringify(S, null, 2), `quest-log-backup-${today()}.json`, "application/json");
   $("#importFile").onchange = restore;
+  if (DEMO) {
+    $("#demoRow").hidden = false;
+    $<HTMLAnchorElement>("#leaveDemo").href = location.pathname;
+  }
   $("#resetBtn").onclick = () => {
     if (DEMO) {
       void resetDemo();

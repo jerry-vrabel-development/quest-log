@@ -1,0 +1,27 @@
+# Weekly dependency updates as pull requests (#26). They target dev, like every other change.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for all small updates; majors still come one by one.
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Pinned to match the Playwright CI container image (mcr.microsoft.com/playwright); upgrade both together.
+      - dependency-name: "@playwright/test"
+      - dependency-name: "playwright"
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Chicago

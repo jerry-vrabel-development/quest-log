@@ -348,6 +348,8 @@ html {
   font-size: 0.85rem;
   color: var(--muted);
   margin-top: 2px;
+  /* A long link in a tiny step must wrap, or it widens the whole page on phones (and the opening screen drifts right). */
+  overflow-wrap: anywhere;
 }
 .q .meta {
   display: flex;

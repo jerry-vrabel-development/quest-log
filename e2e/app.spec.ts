@@ -308,6 +308,35 @@ test.describe("opening screen", () => {
     expect((await page.evaluate(() => window.__sounds)).length).toBeGreaterThan(0);
   });
 
+  test("stays centered when a tiny step holds a long link (the page never grows wider than the screen)", async ({
+    page,
+  }) => {
+    await page.locator("#splash").click();
+    await page.getByRole("button", { name: "Add quest" }).click();
+    await page.getByLabel("Quest", { exact: true }).fill("Apply: Software Engineer @ Numeral");
+    await page
+      .getByLabel(/Tiny first step/)
+      .fill("Read it once: https://www.ycombinator.com/companies/numeral/jobs/xcF2zhm-software-engineer-product");
+    await page.getByRole("button", { name: "Save" }).click();
+    await page.reload();
+
+    const splash = page.locator("#splash");
+    await expect(splash).toBeVisible();
+    const m = await page.evaluate(() => {
+      const box = document.querySelector(".splash-emblem")!.getBoundingClientRect();
+      return {
+        // The visible width: on phones, innerWidth can grow along with content that's too wide.
+        screen: window.visualViewport?.width ?? window.innerWidth,
+        page: document.documentElement.scrollWidth,
+        splash: document.querySelector("#splash")!.getBoundingClientRect().width,
+        center: box.left + box.width / 2,
+      };
+    });
+    expect(m.page).toBeLessThanOrEqual(m.screen);
+    expect(m.splash).toBeLessThanOrEqual(m.screen);
+    expect(Math.abs(m.center - m.screen / 2)).toBeLessThanOrEqual(1);
+  });
+
   test("can be turned off in Settings", async ({ page }) => {
     await page.locator("#splash").click();
     await page.getByRole("button", { name: "Settings" }).click();

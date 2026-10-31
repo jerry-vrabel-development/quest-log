@@ -184,20 +184,13 @@ h1 {
   font-size: 1.2rem;
   cursor: pointer;
 }
-/* Keep keyboard focus visible below the sticky progress panel (WCAG 2.2 Focus Not Obscured).
-   --hud-h is measured in main.ts. */
-html {
-  scroll-padding-top: var(--hud-h, 0px);
-}
 .hud {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 16px;
   margin-bottom: 14px;
-  position: sticky;
-  top: 8px;
-  z-index: 5;
+  /* Scrolls away with the page, so on a phone the list gets the whole screen (it used to be sticky). */
 }
 .hud-row {
   display: flex;

@@ -50,12 +50,6 @@ void loadMediaIndex().then(() => {
   render();
 });
 
-// The progress panel is sticky; scroll focused items to just below it, never underneath.
-const hud = $(".hud");
-new ResizeObserver(() => {
-  document.documentElement.style.setProperty("--hud-h", `${String(hud.offsetHeight + 16)}px`);
-}).observe(hud);
-
 // WAI-ARIA tabs: click or Enter selects; Left/Right (and Home/End) move between tabs.
 const tabs = [...document.querySelectorAll<HTMLElement>(".tabs button")];
 const selectTab = (btn: HTMLElement) => {

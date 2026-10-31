@@ -5,14 +5,20 @@ on:
     branches: [main, dev]
   pull_request:
 
+# A newer push to the same branch or PR cancels the run still going, so runs don't pile up.
+# Pushes to main and dev each finish, so every merge there gets a full result.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     name: Lint, types, unit & worker tests
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -33,14 +39,14 @@ jobs:
     # Browsers and system libraries come preinstalled in Playwright's image (matches @playwright/test)
     container: mcr.microsoft.com/playwright:v1.56.1-noble
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report

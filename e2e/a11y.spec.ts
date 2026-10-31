@@ -160,16 +160,29 @@ test.describe("keyboard", () => {
     await expect(tiny).toBeFocused();
   });
 
-  test("a focused quest is never hidden under the sticky progress panel", async ({ page }) => {
+  test("the progress panel scrolls away on every tab, so it never covers a quest", async ({ page }) => {
+    // A short screen, so every tab has room to scroll past the panel.
+    await page.setViewportSize({ width: 412, height: 320 });
     await page.goto("/");
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
-    const first = page.getByRole("button", { name: /^Drink a glass of water/ });
-    await first.focus();
-    const hudBottom = await page.locator(".hud").evaluate((h) => h.getBoundingClientRect().bottom);
-    const top = await first.evaluate((b) => b.getBoundingClientRect().top);
-    expect(top).toBeGreaterThanOrEqual(hudBottom);
+    const hud = page.locator(".hud");
+    const checked: string[] = [];
+    for (const tab of ["Now", "Upcoming", "All", "Loot", "Journey"]) {
+      await page.getByRole("tab", { name: tab }).click();
+      const passed = await hud.evaluate((h) => {
+        const below = h.getBoundingClientRect().bottom + window.scrollY;
+        window.scrollTo(0, below + 40);
+        // Only tabs long enough to scroll that far can show it; the rest can't cover anything.
+        return window.scrollY >= below;
+      });
+      if (passed) {
+        checked.push(tab);
+        expect(await hud.evaluate((h) => h.getBoundingClientRect().bottom), tab).toBeLessThanOrEqual(0);
+      }
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
+    }
+    expect(checked).toContain("Now");
   });
 
   test("the Log says which choices are picked, without relying on color", async ({ page }) => {

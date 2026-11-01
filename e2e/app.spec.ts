@@ -83,6 +83,17 @@ test("an ordinary quest gets a toast, not the chest", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("loot comes from the quest's companion, and the Loot tab shows the Party", async ({ page }) => {
+  await page.getByLabel("Complete Check off this quest").click();
+  await collect(page); // First Step badge
+  await page.getByLabel("Complete Drink a glass of water").click(); // Health: a new habit always drops
+  await expect(page.locator("#toast")).toHaveClass(/show/);
+  await expect(page.locator("#trar")).toContainText("🌿 The Healer");
+  await page.getByRole("tab", { name: "Loot" }).click();
+  await expect(page.getByRole("list", { name: "Found from each companion" })).toContainText("🌿 Healer · 1 of 16");
+  await expect(page.locator(".inv .item").first()).toContainText("common · 🌿 The Healer");
+});
+
 test("sound can be turned off, and stays off", async ({ page }) => {
   await page.getByRole("button", { name: "Settings" }).click();
   await page.locator("#soundSel").selectOption("0");

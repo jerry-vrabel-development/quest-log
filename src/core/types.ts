@@ -35,6 +35,8 @@ export interface LootItem {
   /** Description. */
   d: string;
   at: number;
+  /** Which companion handed it over (#31). Missing on items found before the Party. */
+  by?: string;
 }
 
 /** A check-in: mood, plus optional extras (anxiety, energy, body, focus, sleep, pain). */
@@ -72,6 +74,8 @@ export interface PendingReward {
   name: string;
   xp: number;
   at: number;
+  /** The quest's area, so its loot comes from the right companion. */
+  g?: string;
 }
 
 export type MomentKind = "photo" | "song" | "movie" | "recording" | "video";

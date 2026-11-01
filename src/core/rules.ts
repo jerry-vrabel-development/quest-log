@@ -4,6 +4,7 @@
  * the app and the MCP server so the two can never disagree.
  */
 import type { Extras } from "./checkin";
+import { LEGENDARY, PACKS, poolFor, type CompanionId } from "./party";
 import { addDays, nextOccurrence } from "./dates";
 import type { LogEvent, LootItem, Quest, Rarity, State, When } from "./types";
 
@@ -26,39 +27,10 @@ export const MOODS = ["Bottom", "Awful", "Rough", "Low", "Meh", "Okay", "Decent"
 );
 export const moodLabel = (v: number): string => MOODS[v - 1]?.label ?? "";
 
-/**
- * The loot: a cozy trail adventure (#31). Each item is a real-world reward or a line that means
- * something, so the theme wraps something the person actually wants. Written for anyone, not one user.
- */
-export const LOOT: Record<Rarity, [name: string, desc: string][]> = {
-  common: [
-    ["Trail Snack", "Reward: a snack you actually like."],
-    ["Canteen Refill", "Reward: something good to drink."],
-    ["Smooth Stone", "Proof you moved. Pocket it."],
-    ["Map Fragment", "One more piece of the way forward."],
-    ["Lantern Oil", "Reward: 10 minutes of guilt-free anything."],
-    ["Campfire Song", "Reward: one song you love, played loud."],
-    ["Warm Socks", "Reward: change into something comfortable."],
-    ["Trail Marker", "You were here. It counts."],
-  ],
-  rare: [
-    ["Thaw Crystal", "The freeze cracked. Remember how that felt."],
-    ["Compass of Focus", "Reward: 30 minutes on something you're curious about."],
-    ["Scenic Detour", "Reward: time outside somewhere you like."],
-    ["Bard's Playlist", "Reward: put on something you love while you work."],
-    ["Hot Spring Map", "Reward: a hot shower or bath, no rush."],
-    ["Bedroll", "Reward: a real rest. Twenty minutes, no guilt."],
-  ],
-  epic: [
-    ["Innkeeper's Feast", "Reward: a real meal you're looking forward to."],
-    ["Hearthstone", "Reward: call or text someone who feels like home."],
-    ["Cartographer's Atlas", "Look how far you've come. Open your Journey."],
-    ["Second Wind", "You've started over before. You know the way."],
-  ],
-  legendary: [
-    ["Crown of Forward Motion", "Reward: a full afternoon off, zero guilt. You earned it."],
-    ["North Star", "Reward: an hour on the dream you keep putting off."],
-  ],
+/** The Guide's pack plus the shared legendaries: the loot for anything without its own companion (#31). */
+export const LOOT: Record<Rarity, readonly (readonly [name: string, desc: string])[]> = {
+  ...PACKS.guide,
+  legendary: LEGENDARY,
 };
 
 /** Cumulative drop chances: 3% legendary, 8% epic, 17% rare, 27% common, 45% nothing. */
@@ -143,6 +115,24 @@ export function markActiveDay(S: State, today: string): void {
   }
 }
 
+/**
+ * One item from the pack, never one of the last (pack size - 1) found from that same pack, so you
+ * see every item before any comes back. Worked out from the inventory: nothing extra to store or sync.
+ */
+function pickFresh(S: State, by: CompanionId, rar: Rarity, rng: Rng): readonly [string, string] {
+  const pool = poolFor(by, rar);
+  const shared = rar === "legendary";
+  const recent = new Set(
+    S.inv
+      .filter((it) => it.rar === rar && (shared || it.by === by))
+      .slice(0, pool.length - 1)
+      .map((it) => it.n),
+  );
+  const fresh = pool.filter(([n]) => !recent.has(n));
+  const from = fresh.length ? fresh : pool;
+  return from[Math.floor(rng() * from.length)] ?? pool[0];
+}
+
 /** Variable-ratio loot roll with a pity timer. Mutates S.inv and S.dry. */
 /**
  * @param guaranteed continuous reinforcement: always drop something (at least common), e.g. while a
@@ -153,6 +143,7 @@ export function rollLoot(
   rng: Rng = Math.random,
   now: number = Date.now(),
   guaranteed = false,
+  by: CompanionId = "guide",
 ): LootItem | null {
   const r = rng();
   let rar: Rarity | null = DROP_TABLE.find(([p]) => r < p)?.[1] ?? null;
@@ -162,9 +153,8 @@ export function rollLoot(
     return null;
   }
   S.dry = 0;
-  const pool = LOOT[rar];
-  const [n, d] = pool[Math.floor(rng() * pool.length)];
-  const item: LootItem = { rar, n, d, at: now };
+  const [n, d] = pickFresh(S, by, rar, rng);
+  const item: LootItem = { rar, n, d, at: now, by };
   S.inv.unshift(item);
   S.inv = S.inv.slice(0, KEEP_INV);
   return item;
@@ -243,6 +233,6 @@ export function recordFreeze(S: State, when: When, step?: string): { xp: number 
 }
 
 /** Queues XP earned outside the app so the app can roll loot for it later. */
-export function queueReward(S: State, name: string, xp: number, now: number): void {
-  (S.rewards ??= []).push({ name, xp, at: now });
+export function queueReward(S: State, name: string, xp: number, now: number, g?: string): void {
+  (S.rewards ??= []).push({ name, xp, at: now, ...(g ? { g } : {}) });
 }

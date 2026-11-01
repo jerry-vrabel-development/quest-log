@@ -103,7 +103,7 @@ describe("tools", () => {
     const S = await state();
     expect(S.quests.map((q) => q.id)).toEqual([1, 2, 3, 4, 5]);
     expect(S.xp).toBe(5);
-    expect(S.rewards).toEqual([{ name: "Neck stretch", xp: 5, at: NOW }]);
+    expect(S.rewards).toEqual([{ name: "Neck stretch", xp: 5, at: NOW, g: "My quests" }]); // the area picks the companion
   });
 
   it("add_quests is all-or-nothing when one quest is invalid", async () => {

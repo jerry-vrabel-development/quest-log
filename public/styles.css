@@ -1251,6 +1251,18 @@ legend {
 .chest-card .chest-loot b {
   color: var(--ink);
 }
+.chest-from {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.chest-again {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
 .chest-desc {
   color: var(--muted);
   font-size: 0.9rem;
@@ -1941,4 +1953,26 @@ a.moment-link-card:focus-visible {
 }
 #greeting:not(:empty)::after {
   content: " ";
+}
+
+/* ---------- the Party (#31) ---------- */
+.party {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  margin: 0 0 12px;
+}
+.party li {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.inv .item .item-from {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
 }

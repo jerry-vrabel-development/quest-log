@@ -15,13 +15,14 @@ import { checkReminders, initReminders } from "./reminders";
 import { isView, render, setView } from "./render";
 import { initSessionSounds } from "./session";
 import { applyTheme, initSettings } from "./settings";
-import { load, today } from "./store";
+import { isFirstRun, load, today } from "./store";
 import { DEMO, resetDemo, showDemoBanner } from "./demo";
 import { initBackup } from "./backup";
 import { initLog } from "./log";
 import { initShare } from "./share";
 import { initSync, pullState } from "./sync";
 import { initWelcome } from "./welcome";
+import { initNews } from "./news";
 
 const REMINDER_POLL_MS = 30_000;
 
@@ -43,6 +44,7 @@ initMoodEditor();
 initMoments();
 initSessionSounds();
 initWelcome();
+initNews(isFirstRun());
 // Moment files (photos, audio) live in IndexedDB; once we know which are on this device, refresh the view.
 // Saved files are listed in the background; mark the page when that's done (tests wait on it).
 void loadMediaIndex().then(() => {

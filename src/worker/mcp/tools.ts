@@ -31,7 +31,8 @@ const questInput = {
     tiny: { type: "string", description: "Tiny first step for when the user feels frozen.", maxLength: 160 },
     category: {
       type: "string",
-      description: "e.g. Health & safety net, Bash, Career, Money, Next home, House, Art, Strength, Programming.",
+      description:
+        "An area of life, e.g. Health, Work, Home, Pet, Art, Money, Friends & family, Learning, or the user's own.",
       maxLength: 40,
     },
     xp: { type: "integer", enum: XP_VALUES, description: "Reward size. Default 15." },

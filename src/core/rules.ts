@@ -26,28 +26,39 @@ export const MOODS = ["Bottom", "Awful", "Rough", "Low", "Meh", "Okay", "Decent"
 );
 export const moodLabel = (v: number): string => MOODS[v - 1]?.label ?? "";
 
+/**
+ * The loot: a cozy trail adventure (#31). Each item is a real-world reward or a line that means
+ * something, so the theme wraps something the person actually wants. Written for anyone, not one user.
+ */
 export const LOOT: Record<Rarity, [name: string, desc: string][]> = {
   common: [
-    ["Bash's Squeaky Ball", "Reward: 10 minutes of guilt-free anything."],
-    ["Cup of Good Coffee", "Reward: make or buy the good stuff."],
-    ["Small Win Token", "Proof that you moved. That counts."],
-    ["Extra Belly Rub", "For Bash. Also kind of for you."],
-    ["Clean Commit", "Something got shipped today."],
-    ["Open Tab Closed", "One less thing rattling around."],
+    ["Trail Snack", "Reward: a snack you actually like."],
+    ["Canteen Refill", "Reward: something good to drink."],
+    ["Smooth Stone", "Proof you moved. Pocket it."],
+    ["Map Fragment", "One more piece of the way forward."],
+    ["Lantern Oil", "Reward: 10 minutes of guilt-free anything."],
+    ["Campfire Song", "Reward: one song you love, played loud."],
+    ["Warm Socks", "Reward: change into something comfortable."],
+    ["Trail Marker", "You were here. It counts."],
   ],
   rare: [
-    ["Golden Tennis Ball", "Reward: a longer walk somewhere you like."],
     ["Thaw Crystal", "The freeze cracked. Remember how that felt."],
-    ["Recruiter's Eye", "You know how hiring works from both sides."],
-    ["Mechanical Keyboard of Focus", "Reward: 30 minutes on a fun code side project."],
-    ["Good Playlist", "Reward: put on something you love while you work."],
+    ["Compass of Focus", "Reward: 30 minutes on something you're curious about."],
+    ["Scenic Detour", "Reward: time outside somewhere you like."],
+    ["Bard's Playlist", "Reward: put on something you love while you work."],
+    ["Hot Spring Map", "Reward: a hot shower or bath, no rush."],
+    ["Bedroll", "Reward: a real rest. Twenty minutes, no guilt."],
   ],
   epic: [
-    ["Employee #75 Badge", "You were there early. You know how to start from small."],
-    ["Dot-Com Survivor Shield", "You've rebuilt after a crash before."],
-    ["Treat of Champions", "Reward: get yourself a real treat. Bash too."],
+    ["Innkeeper's Feast", "Reward: a real meal you're looking forward to."],
+    ["Hearthstone", "Reward: call or text someone who feels like home."],
+    ["Cartographer's Atlas", "Look how far you've come. Open your Journey."],
+    ["Second Wind", "You've started over before. You know the way."],
   ],
-  legendary: [["Crown of Forward Motion", "Reward: a full afternoon off, zero guilt. You earned it."]],
+  legendary: [
+    ["Crown of Forward Motion", "Reward: a full afternoon off, zero guilt. You earned it."],
+    ["North Star", "Reward: an hour on the dream you keep putting off."],
+  ],
 };
 
 /** Cumulative drop chances: 3% legendary, 8% epic, 17% rare, 27% common, 45% nothing. */
@@ -61,6 +72,30 @@ export const DROP_TABLE: readonly (readonly [threshold: number, rarity: Rarity])
 export type Rng = () => number;
 
 /** Level curve: 50 XP for level 2, each level needs 25% more. */
+/** Titles that go with levels, on the same trail theme as the loot: from this level on, you're a … */
+export const LEVEL_TITLES: readonly (readonly [from: number, title: string])[] = [
+  [1, "Wanderer"],
+  [3, "Trailfinder"],
+  [5, "Pathkeeper"],
+  [8, "Wayfarer"],
+  [10, "Trailblazer"],
+  [15, "Cartographer"],
+  [20, "Lorekeeper"],
+  [30, "Legend"],
+];
+
+/** The title for a level, e.g. 13 → "Trailblazer". */
+export function levelTitle(l: number): string {
+  let title = LEVEL_TITLES[0][1];
+  for (const [from, t] of LEVEL_TITLES) if (l >= from) title = t;
+  return title;
+}
+
+/** The new title earned by going from one level to another, or null if the title didn't change. */
+export function newTitle(before: number, after: number): string | null {
+  return after > before && levelTitle(after) !== levelTitle(before) ? levelTitle(after) : null;
+}
+
 export function level(xp: number): { l: number; into: number; need: number } {
   let l = 1;
   let need = 50;

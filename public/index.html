@@ -18,7 +18,8 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="splash" id="splash" role="button" tabindex="0" aria-label="Tap to begin">
+    <!-- No aria-label: the button's name is what it shows (title, level, streak, "Tap to begin"), so voice control matches what people see. -->
+    <div class="splash" id="splash" role="button" tabindex="0">
       <img class="splash-emblem" src="icons/icon-192.png" alt="" width="96" height="96" />
       <h1 class="splash-title">Quest Log</h1>
       <p class="splash-stats" id="splashStats"></p>
@@ -336,7 +337,12 @@
           /></label>
         </div>
         <label
-          >Caption<textarea id="momentCaption" rows="2" maxlength="200" placeholder="Bash chasing the gulls"></textarea>
+          >Caption<textarea
+            id="momentCaption"
+            rows="2"
+            maxlength="200"
+            placeholder="Sunset on the walk home"
+          ></textarea>
         </label>
         <label
           >Goes with <span class="hint">(optional: quests in this area can bring it back)</span>

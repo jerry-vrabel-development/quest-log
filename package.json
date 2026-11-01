@@ -23,12 +23,12 @@
     "db:init:local": "wrangler d1 execute quest-log --local --file=schema.sql"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.10.2",
-    "@cloudflare/workers-types": "^5.20261022.1",
+    "@axe-core/playwright": "4.14.0",
+    "@cloudflare/workers-types": "^5.20261028.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.56.1",
     "@types/node": "^22.20.5",
-    "@vitest/coverage-v8": "^4.1.12",
+    "@vitest/coverage-v8": "^5.0.5",
     "esbuild": "^0.28.2",
     "eslint": "^10.13.0",
     "fast-check": "^4.10.2",
@@ -36,7 +36,7 @@
     "prettier": "^3.9.10",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.1",
-    "vitest": "^4.1.12",
+    "vitest": "^5.0.5",
     "wrangler": "^4"
   },
   "dependencies": {

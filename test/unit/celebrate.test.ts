@@ -40,6 +40,7 @@ describe("celebrationFor", () => {
 
   it.each<[string, Partial<Moment>, string]>([
     ["a level-up", { levelAfter: 4 }, "Level 4!"],
+    ["a level-up that earns a new title", { levelBefore: 4, levelAfter: 5 }, "Level 5: you're a Pathkeeper now!"],
     ["a legendary drop", { item: item("legendary") }, "Legendary drop!"],
     ["an epic drop", { item: item("epic") }, "Epic drop!"],
     ["a badge", { badges: ["First Step"] }, "Badge: First Step"],

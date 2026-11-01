@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   DROP_TABLE,
   FREEZE_XP,
+  LEVEL_TITLES,
+  LOOT,
   MOOD_XP,
   PITY_AFTER,
   bestStreak,
   completeQuest,
   level,
+  levelTitle,
+  newTitle,
   recordFreeze,
   recordMood,
   rollLoot,
@@ -146,5 +150,55 @@ describe("recordMood / recordFreeze", () => {
     expect(S.xp).toBe(FREEZE_XP);
     expect(S.days).toContain(T);
     expect(S.log[0].t).toBe("freeze");
+  });
+});
+
+describe("level titles", () => {
+  it.each([
+    [1, "Wanderer"],
+    [2, "Wanderer"],
+    [3, "Trailfinder"],
+    [5, "Pathkeeper"],
+    [9, "Wayfarer"],
+    [13, "Trailblazer"],
+    [15, "Cartographer"],
+    [29, "Lorekeeper"],
+    [30, "Legend"],
+    [99, "Legend"],
+  ])("level %i is a %s", (l, title) => {
+    expect(levelTitle(l)).toBe(title);
+  });
+
+  it("start at level 1 and climb in order", () => {
+    expect(LEVEL_TITLES[0][0]).toBe(1);
+    const froms = LEVEL_TITLES.map(([from]) => from);
+    expect(froms).toEqual([...froms].sort((a, b) => a - b));
+  });
+
+  it("names the new title only when a level-up reaches one", () => {
+    expect(newTitle(4, 5)).toBe("Pathkeeper");
+    expect(newTitle(2, 9)).toBe("Wayfarer"); // skipped several: the highest one counts
+    expect(newTitle(5, 6)).toBeNull();
+    expect(newTitle(5, 5)).toBeNull();
+  });
+});
+
+describe("the loot", () => {
+  const all = Object.values(LOOT).flat();
+
+  it("every item has a name and a line that means something, and no two share a name", () => {
+    for (const [name, desc] of all) {
+      expect(name.trim()).not.toBe("");
+      expect(desc.trim().length).toBeGreaterThan(10);
+    }
+    expect(new Set(all.map(([name]) => name)).size).toBe(all.length);
+  });
+
+  it("is written for anyone: nothing about one particular person or pet", () => {
+    for (const [name, desc] of all) expect(`${name} ${desc}`).not.toMatch(/\bBash\b|recruit|Employee #|Dot-Com/i);
+  });
+
+  it("every rarity has something in it", () => {
+    for (const pool of Object.values(LOOT)) expect(pool.length).toBeGreaterThan(0);
   });
 });

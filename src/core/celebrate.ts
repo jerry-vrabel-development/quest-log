@@ -9,7 +9,7 @@
  *    big days, streak milestones, and comebacks.
  *  - Never punishing: coming back after a break always pays, and the streak that ended is honored.
  */
-import { MOOD_LOW } from "./rules";
+import { MOOD_LOW, newTitle } from "./rules";
 import { honorEndedRun, type Comeback } from "./streaks";
 import type { LootItem, Mood } from "./types";
 
@@ -76,7 +76,10 @@ export function celebrationFor(m: Moment): Celebration {
     const honor = honorEndedRun(m.comeback);
     if (honor) reasons.push(honor);
   }
-  if (m.levelAfter > m.levelBefore) reasons.push(`Level ${m.levelAfter}!`);
+  if (m.levelAfter > m.levelBefore) {
+    const title = newTitle(m.levelBefore, m.levelAfter);
+    reasons.push(title ? `Level ${m.levelAfter}: you're a ${title} now!` : `Level ${m.levelAfter}!`);
+  }
   if (m.item?.rar === "legendary") reasons.push("Legendary drop!");
   else if (m.item?.rar === "epic") reasons.push("Epic drop!");
   for (const b of m.badges) reasons.push(`Badge: ${b}`);

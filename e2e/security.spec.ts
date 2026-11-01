@@ -98,7 +98,7 @@ test("nothing the app does breaks its Content-Security-Policy", async ({ page, b
     page.getByRole("button", { name: "Reset demo" }).click(),
   ]);
   await page.waitForLoadState("load");
-  await expect(page.locator("#lvl")).toHaveText("Level 1");
+  await expect(page.locator("#lvl")).toHaveText("Level 1 · Wanderer");
   expect(await violations(page)).toEqual([]);
 });
 

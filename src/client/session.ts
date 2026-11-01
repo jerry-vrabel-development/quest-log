@@ -6,7 +6,7 @@
  * on a fresh open and after 30+ minutes away. With the welcome screen off, the chime plays on the
  * first tap instead. Closing: a soft farewell chime (best effort; some phones cut audio on exit).
  */
-import { level } from "../core/rules";
+import { level, levelTitle } from "../core/rules";
 import { prefersReducedMotion } from "./confetti";
 import { $ } from "./dom";
 import { streakLine } from "./render";
@@ -40,7 +40,8 @@ function runAfterBegin(): void {
 
 function statsLine(): string {
   const line = streakLine(today());
-  return `Level ${String(level(S.xp).l)} · ${line === "Start a streak today" ? "Today's a good day to start" : line}`;
+  const l = level(S.xp).l;
+  return `Level ${String(l)} · ${levelTitle(l)} · ${line === "Start a streak today" ? "Today's a good day to start" : line}`;
 }
 
 /** While the opening screen covers the page, the page behind it can't take focus or clicks. */

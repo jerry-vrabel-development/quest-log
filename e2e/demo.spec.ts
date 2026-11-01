@@ -28,7 +28,7 @@ test("starts at zero: level 1, nothing logged, the starter quests, and passes ax
   await expect(page.getByRole("complementary", { name: "Demo" })).toContainText(
     "a fresh start to play with, kept in this browser only",
   );
-  await expect(page.locator("#lvl")).toHaveText("Level 1");
+  await expect(page.locator("#lvl")).toHaveText("Level 1 · Wanderer");
   await expect(page.locator("#xp")).toContainText("0 XP");
   await expect(page.getByLabel("Complete Check off this quest")).toBeVisible();
   await page.getByRole("tab", { name: "Journey" }).click();
@@ -74,7 +74,7 @@ test("keeps your demo changes across reloads, and Reset starts over from level 1
   await expect(xp).toHaveText(after ?? "");
   await page.getByRole("button", { name: "Reset demo" }).click();
   await expect(xp).toHaveText(before ?? "");
-  await expect(page.locator("#lvl")).toHaveText("Level 1");
+  await expect(page.locator("#lvl")).toHaveText("Level 1 · Wanderer");
   await expect(page.getByLabel("Complete Check off this quest")).toBeVisible(); // open again
 });
 
@@ -85,7 +85,7 @@ test("the banner can be closed, stays closed, and Settings still has Reset and L
   await page.getByRole("button", { name: "Close the demo banner" }).click();
   await expect(banner).toHaveCount(0);
   await page.reload();
-  await expect(page.locator("#lvl")).toHaveText("Level 1");
+  await expect(page.locator("#lvl")).toHaveText("Level 1 · Wanderer");
   await expect(banner).toHaveCount(0); // stays closed
 
   await page.locator("#settingsBtn").click();

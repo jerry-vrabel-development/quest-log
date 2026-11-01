@@ -45,7 +45,7 @@ async function collect(page: Page) {
 }
 
 test("first launch shows starter quests and a level-1 HUD", async ({ page }) => {
-  await expect(page.locator("#lvl")).toHaveText("Level 1");
+  await expect(page.locator("#lvl")).toHaveText("Level 1 · Wanderer");
   await expect(page.locator("#xp")).toHaveText("0 XP · 0/50 to next");
   await expect(page.getByText("Check off this quest")).toBeVisible();
   await expect(page.getByText("Tiny step: Tap the box on the left")).toBeVisible();

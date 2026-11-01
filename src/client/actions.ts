@@ -6,7 +6,16 @@
  */
 import type { Extras } from "../core/checkin";
 import { celebrationFor, guaranteedDrop, isLowDay, type Moment, type Tier } from "../core/celebrate";
-import { completeQuest, level, recordFreeze, recordMood, rollLoot, streak, uncompleteQuest } from "../core/rules";
+import {
+  completeQuest,
+  level,
+  newTitle,
+  recordFreeze,
+  recordMood,
+  rollLoot,
+  streak,
+  uncompleteQuest,
+} from "../core/rules";
 import { chooseMemory, markSeen, memoryChance, type Memory } from "../core/memories";
 import { checkBadges, type EarnedBadge } from "../core/stats";
 import { comebackFor, type Comeback } from "../core/streaks";
@@ -105,7 +114,14 @@ function reward(
   render();
 
   const toasts: ToastItem[] = [];
-  if (levelAfter > before.level) toasts.push(["level up", `Level ${levelAfter}!`, "You're moving. Keep it gentle."]);
+  if (levelAfter > before.level) {
+    const title = newTitle(before.level, levelAfter);
+    toasts.push([
+      "level up",
+      `Level ${String(levelAfter)}!`,
+      title ? `You're a ${title} now.` : "You're moving. Keep it gentle.",
+    ]);
+  }
   if (item) toasts.push([item.rar, item.n, item.d]);
   toasts.push(...badges.map(badgeToast));
   if (!toasts.length && xp > 0) toasts.push([`+${xp} xp`, "Nice.", "No drop this time. The next one might be big."]);

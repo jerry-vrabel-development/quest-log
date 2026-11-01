@@ -17,7 +17,7 @@ export interface DicePick {
 export const FALLBACK_STEPS: readonly string[] = [
   "Drink a glass of water",
   "Stand up and stretch for one minute",
-  "Take Bash outside for two minutes",
+  "Step outside for two minutes",
   "Put three things back where they belong",
   "Open the window and take five slow breaths",
   "Write one sentence about how you feel",

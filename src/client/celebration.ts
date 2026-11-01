@@ -6,11 +6,13 @@
  */
 import type { Celebration } from "../core/celebrate";
 import type { Memory } from "../core/memories";
+import { handedBy, timesFound } from "../core/party";
 import type { LootItem } from "../core/types";
 import { confetti, prefersReducedMotion } from "./confetti";
 import { el, fmtDay } from "./dom";
 import { momentMedia, showMemoryPop } from "./moments";
 import { buzz, playReward } from "./sound";
+import { S } from "./store";
 import { toastQueue, type ToastItem } from "./toast";
 
 /** Pause between the marker click and the payoff, so they read as two beats. */
@@ -72,7 +74,11 @@ function openChest(reasons: string[], item: LootItem | null, memory: Memory | nu
 
   if (item) {
     const loot = el("div", `chest-loot r-${item.rar}`);
+    const from = handedBy(item);
+    if (from) loot.append(el("span", "chest-from", `${from} hands you:`));
     loot.append(el("span", "chest-rar", item.rar), el("b", "", item.n), el("span", "chest-desc", item.d));
+    const times = timesFound(S.inv, item.n);
+    if (times > 1) loot.append(el("span", "chest-again", `Found again ×${String(times)}`));
     card.append(loot);
   }
   if (memory) {

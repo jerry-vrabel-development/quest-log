@@ -24,9 +24,14 @@ export function setState(next: unknown): void {
 /** A fresh start: the starter quests, at level 1 with nothing logged (the demo starts here too). */
 const fresh = (): State => freshState(today());
 
+let firstRun = false;
+/** True when load() found nothing saved on this device: someone opening the app for the first time. */
+export const isFirstRun = (): boolean => firstRun;
+
 export function load(): void {
   try {
     const raw = localStorage.getItem(KEY);
+    firstRun = !raw;
     setState(raw ? JSON.parse(raw) : fresh());
   } catch {
     setState(fresh());

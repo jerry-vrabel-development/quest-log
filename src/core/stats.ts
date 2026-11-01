@@ -36,7 +36,8 @@ export const BADGES: readonly Badge[] = [
   ["check-in", "🫀", "Honest Check-in", "Log your mood for the first time", (s) => s.moodDays >= 1],
   ["low-day-hero", "🛡️", "Low-Day Hero", "Finish a quest on a day your mood was 4 or under", (s) => s.lowDayWins >= 1],
   ["ten-down", "🔟", "Ten Down", "Complete 10 quests", (s) => s.quests >= 10],
-  ["bash-bff", "🐕", "Bash's Best Friend", "Complete 10 Bash quests", (s) => (s.byCat["Bash"] || 0) >= 10],
+  // The id stays "bash-bff" so a badge already earned under its old name keeps counting as earned.
+  ["bash-bff", "🐾", "Best Friend", "Complete 10 Pet quests", (s) => (s.byCat["Pet"] || 0) >= 10],
   ["streak-3", "🔥", "Kindling", "3-day streak", (s) => s.bestStreak >= 3],
   ["comeback", "🌱", "Comeback", "Come back after a break", (s) => s.comebacks >= 1],
   ["mood-week", "📓", "Self-Aware", "Log your mood on 7 different days", (s) => s.moodDays >= 7],

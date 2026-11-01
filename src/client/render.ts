@@ -1,7 +1,7 @@
 /** Renders the HUD and the current tab. */
 import { daysBetween } from "../core/dates";
 import { byCategory, nowView, rollMissed, upcoming } from "../core/quests";
-import { bestStreak, level, streak } from "../core/rules";
+import { bestStreak, level, levelTitle, streak } from "../core/rules";
 import { comebackFor } from "../core/streaks";
 import type { Quest } from "../core/types";
 import { greeting } from "../core/welcome";
@@ -75,7 +75,7 @@ export function streakLine(t: string): string {
 
 function renderHud(t: string): void {
   const lv = level(S.xp);
-  $("#lvl").textContent = "Level " + lv.l;
+  $("#lvl").textContent = `Level ${String(lv.l)} · ${levelTitle(lv.l)}`;
   $("#xp").textContent = `${S.xp} XP · ${lv.into}/${lv.need} to next`;
   $("#bar").style.width = (lv.into / lv.need) * 100 + "%";
   $("#streak").textContent = streakLine(t);
@@ -95,7 +95,7 @@ function renderNow(box: HTMLElement, t: string): void {
   });
   section(box, "Anytime", v.anytime, { t });
   if (!v.overdue.length && !v.today.length && !v.anytime.length) {
-    box.append(el("div", "empty", "All clear. Add a quest or take Bash out."));
+    box.append(el("div", "empty", "All clear. Add a quest, or take a well-earned break."));
   }
 }
 

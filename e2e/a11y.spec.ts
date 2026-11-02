@@ -198,4 +198,50 @@ test.describe("keyboard", () => {
     await expect(calm).toHaveAttribute("aria-pressed", "true");
     await expect(calm).toHaveText("✓ Calm"); // a check mark, not just a fill
   });
+
+  test("loot rarity and overdue quests read without color (#17)", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      const ymd = (offset: number) => {
+        const d = new Date();
+        d.setDate(d.getDate() + offset);
+        return `${String(d.getFullYear())}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      };
+      const S = JSON.parse(localStorage.getItem("quest-log-v2") ?? "{}") as Record<string, unknown>;
+      const quest = (id: number, name: string, due: string) => ({
+        id,
+        name,
+        tiny: "One small step",
+        g: "Career",
+        xp: 10,
+        due,
+        time: "",
+        repeat: "none",
+        remind: -1,
+        done: false,
+        doneAt: null,
+        count: 0,
+      });
+      S.quests = [quest(1, "Late quest", ymd(-3)), quest(2, "Today quest", ymd(0))];
+      S.nextId = 3;
+      S.inv = ["common", "rare", "epic", "legendary"].map((rar, i) => ({
+        rar,
+        n: `Item ${String(i)}`,
+        d: "A thing",
+        at: Date.now() - i,
+      }));
+      localStorage.setItem("quest-log-v2", JSON.stringify(S));
+    });
+    await page.reload();
+
+    // Overdue: a heading that says so, and a chip with words, not just a red border.
+    await expect(page.getByRole("heading", { name: /Overdue/ })).toBeVisible();
+    await expect(page.locator(".q", { hasText: "Late quest" }).locator(".chip").first()).toHaveText("3 days ago");
+
+    // Every loot card names its rarity in words.
+    await page.getByRole("tab", { name: "Loot" }).click();
+    for (const [i, rar] of ["common", "rare", "epic", "legendary"].entries()) {
+      await expect(page.locator(".inv .item", { hasText: `Item ${String(i)}` })).toContainText(rar);
+    }
+  });
 });

@@ -43,12 +43,26 @@ delete HEADERS["Strict-Transport-Security"];
 createServer(async (req, res) => {
   const path = normalize(decodeURIComponent(new URL(req.url, "http://x").pathname)).replace(/^(\.\.[/\\])+/, "");
   const file = join(ROOT, path.endsWith("/") ? path + "index.html" : path);
+  // Test hook for the push test (#97): a private copy of this server started with TEST_OUTBOX
+  // answers /api/outbox like the Worker does, for the sync code in TEST_SYNC_CODE only.
+  if (path === "/api/outbox" && process.env.TEST_OUTBOX) {
+    const ok = req.headers.authorization === `Bearer ${process.env.TEST_SYNC_CODE ?? ""}`;
+    res.writeHead(ok ? 200 : 401, { "content-type": "application/json" });
+    res.end(ok ? process.env.TEST_OUTBOX : JSON.stringify({ error: "unauthorized" }));
+    return;
+  }
   if (path === "/_headers") {
     res.writeHead(404).end("not found");
     return;
   }
   try {
-    const body = await readFile(file);
+    let body = await readFile(file);
+    // Test hook for the service worker update test (#97): a `sw-build` cookie serves sw.js as if it
+    // were a new build, by swapping the build id in its cache name. Only this test server does this.
+    const nextBuild = /(?:^|;\s*)sw-build=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1];
+    if (path === "/sw.js" && nextBuild) {
+      body = Buffer.from(body.toString("utf8").replace(/quest-log-(?!config)[\w-]+/, `quest-log-${nextBuild}`));
+    }
     res.writeHead(200, { ...HEADERS, "content-type": TYPES[extname(file)] || "application/octet-stream" });
     res.end(body);
   } catch {

@@ -49,4 +49,42 @@
     },
   ],
   // VAPID_PRIVATE_JWK is a secret: npx wrangler secret put VAPID_PRIVATE_JWK
+
+  // Staging (#25): a second Worker, quest-log-staging, built from the dev branch. Its own database,
+  // OAuth store, media bucket, rate-limit counters and push keys, so nothing tested there touches
+  // real data. Bindings and vars are not inherited by an environment, so each is listed again.
+  // Deploy: npm run deploy:staging. Secret: npx wrangler secret put VAPID_PRIVATE_JWK --env staging
+  "env": {
+    "staging": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "quest-log-staging",
+          "database_id": "3c5b64b8-4f52-44cf-9c16-8efbbeca887e",
+        },
+      ],
+      "vars": {
+        "VAPID_PUBLIC_KEY": "BAq7yR-Z0WU9b2cyJPZFWzC1JknngJa9aPCnmdFrWuzhkujFqXa11K_K0FZ3dzMrnGRPX3-36AMCwbGnbG1T_KE",
+        "VAPID_SUBJECT": "mailto:hire.jerry.vrabel@gmail.com",
+      },
+      "r2_buckets": [
+        {
+          "binding": "MEDIA",
+          "bucket_name": "quest-log-media-staging",
+        },
+      ],
+      "ratelimits": [
+        { "name": "API_LIMIT", "namespace_id": "6411", "simple": { "limit": 120, "period": 60 } },
+        { "name": "MEDIA_LIMIT", "namespace_id": "6412", "simple": { "limit": 30, "period": 60 } },
+        { "name": "MCP_LIMIT", "namespace_id": "6413", "simple": { "limit": 60, "period": 60 } },
+        { "name": "AUTH_LIMIT", "namespace_id": "6414", "simple": { "limit": 10, "period": 60 } },
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "OAUTH_KV",
+          "id": "66fb199651fb441abb59588c3d8278c9",
+        },
+      ],
+    },
+  },
 }

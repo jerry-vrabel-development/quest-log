@@ -139,13 +139,13 @@ Still checked by hand: a VoiceOver pass on iPhone, 200% zoom, and text alternati
 
 ## Testing and quality
 
-| Command                                                       | What it does                                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`                                                    | 266 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter                                                                                                                                                                                                                                              |
-| `npm run test:e2e`                                            | Playwright tests on Desktop Chrome, Pixel 7 and iPhone 15 (Safari's WebKit engine), including an axe-core accessibility scan of every view and dialog: first run, completing quests, the jackpot chest, marker-before-reward sound order, sound settings, reduced motion, mood check-ins and editing or deleting them, comebacks after a break, the editor, Journey, the Frozen dice, the opening screen |
-| `npm run test:coverage`                                       | about 95% line coverage of `core/` and `src/`                                                                                                                                                                                                                                                                                                                                                            |
-| `npm run lint` · `npm run format:check` · `npm run typecheck` | Type-aware ESLint (`strictTypeChecked`), Prettier, and `tsc` over all four programs                                                                                                                                                                                                                                                                                                                      |
-| `npm run check`                                               | all of the above except e2e                                                                                                                                                                                                                                                                                                                                                                              |
+| Command                                                       | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`                                                    | 266 Vitest tests: unit tests for the core, plus Worker tests that run the real `schema.sql` on Node's built-in SQLite through a small D1-compatible adapter                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `npm run test:e2e`                                            | Playwright tests on Desktop Chrome, Pixel 7 and iPhone 15 (Safari's WebKit engine), including an axe-core accessibility scan of every view and dialog: first run, completing quests, the jackpot chest, marker-before-reward sound order, sound settings, reduced motion, mood check-ins and editing or deleting them, comebacks after a break, the editor, Journey, the Frozen dice, the opening screen, and offline use: with the server stopped, the app loads from the service worker's cache and a quest can be checked off; a new build replaces the old cache; an empty push shows the waiting notifications from the outbox (Chromium only) |
+| `npm run test:coverage`                                       | about 95% line coverage of `core/` and `src/`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `npm run lint` · `npm run format:check` · `npm run typecheck` | Type-aware ESLint (`strictTypeChecked`), Prettier, and `tsc` over all four programs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `npm run check`                                               | all of the above except e2e                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 Highlights:
 
@@ -157,7 +157,7 @@ CI runs everything on every push and pull request, including a check that `worke
 
 ## Branches
 
-`feature/*` → pull request into `dev` → pull request into `main`. Both `main` and `dev` are protected: changes land only through pull requests with CI green. Pushing to `main` deploys production.
+`feature/*` → pull request into `dev` → pull request into `main`. Both `main` and `dev` are protected: changes land only through pull requests with CI green. Merging to `main` deploys production; merging to `dev` deploys [staging](#staging).
 
 ## Claude connector (MCP)
 
@@ -207,6 +207,24 @@ npm run deploy
 ```
 
 Also set `VAPID_SUBJECT` in `wrangler.jsonc` to an email address you check.
+
+## Staging
+
+A second Worker, `quest-log-staging`, runs the `dev` branch so changes can be tried on a real Cloudflare deployment before they reach `main`: https://quest-log-staging.forwardslash.workers.dev It has its own D1 database, OAuth KV, R2 bucket, rate-limit counters and push keys (`env.staging` in `wrangler.jsonc`), so nothing done on staging touches production data. Sync codes, connector grants and moments from production don't exist there, and the reverse.
+
+One-time setup:
+
+```bash
+npx wrangler d1 create quest-log-staging            # database_id → env.staging in wrangler.jsonc
+npx wrangler kv namespace create quest-log-oauth-staging   # id → env.staging
+npx wrangler r2 bucket create quest-log-media-staging
+npm run vapid                                       # a separate key pair: public key → env.staging.vars
+npm run db:init:staging
+npm run deploy:staging
+npx wrangler secret put VAPID_PRIVATE_JWK --env staging
+```
+
+Then connect the `quest-log-staging` Worker to this repository in the Cloudflare dashboard (Settings → Build), with `dev` as its production branch and `npx wrangler deploy --env staging` as the deploy command. After that, every merge into `dev` deploys staging.
 
 ## Local development
 

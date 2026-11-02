@@ -210,7 +210,7 @@ Also set `VAPID_SUBJECT` in `wrangler.jsonc` to an email address you check.
 
 ## Staging
 
-A second Worker, `quest-log-staging`, runs the `dev` branch so changes can be tried on a real Cloudflare deployment before they reach `main`. It has its own D1 database, OAuth KV, R2 bucket, rate-limit counters and push keys (`env.staging` in `wrangler.jsonc`), so nothing done on staging touches production data. Sync codes, connector grants and moments from production don't exist there, and the reverse.
+A second Worker, `quest-log-staging`, runs the `dev` branch so changes can be tried on a real Cloudflare deployment before they reach `main`: https://quest-log-staging.forwardslash.workers.dev It has its own D1 database, OAuth KV, R2 bucket, rate-limit counters and push keys (`env.staging` in `wrangler.jsonc`), so nothing done on staging touches production data. Sync codes, connector grants and moments from production don't exist there, and the reverse.
 
 One-time setup:
 

@@ -266,7 +266,7 @@ function describeMood(m: Mood, tz: string): string {
 /** Completes a quest the Claude way: XP now, loot when the app next opens. */
 function completeViaClaude(ctx: ToolContext, q: Quest): string {
   const { nextDue } = completeQuest(ctx.S, q, { today: ctx.t, now: ctx.now, via: "claude" });
-  queueReward(ctx.S, q.name, q.xp, ctx.now);
+  queueReward(ctx.S, q.name, q.xp, ctx.now, q.g);
   return `Completed "${q.name}" (+${q.xp} XP).${nextDue ? ` Next one is ${nextDue}.` : ""}`;
 }
 

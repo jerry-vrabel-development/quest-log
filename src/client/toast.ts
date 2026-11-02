@@ -2,7 +2,7 @@
 import { LOOT } from "../core/rules";
 import { $ } from "./dom";
 
-export type ToastItem = [kind: string, title: string, desc: string];
+export type ToastItem = [kind: string, title: string, desc: string, from?: string];
 
 const BIG = new Set(["legendary", "epic", "badge", "memory"]);
 const colorFor = (kind: string) =>
@@ -14,9 +14,12 @@ const colorFor = (kind: string) =>
 let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** Shows one toast right away. */
-export function toast(kind: string, title: string, desc: string): void {
+export function toast(kind: string, title: string, desc: string, from?: string): void {
   const label = $("#trar");
-  label.textContent = kind === "memory" ? "from your record" : kind;
+  label.textContent =
+    kind === "memory" ? "from your record"
+    : from ? `${kind} · ${from}`
+    : kind;
   label.style.color = `var(--${colorFor(kind)})`;
   $("#tttl").textContent = title;
   $("#td").textContent = desc;

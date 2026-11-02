@@ -13,6 +13,11 @@ export interface News {
 /** Newest first. Only the newest is ever shown. */
 export const NEWS: readonly News[] = [
   {
+    id: "2026-11-party",
+    title: "New: meet the Party.",
+    body: "Each area of life has a companion who hands out its loot: the Healer for health, the Quartermaster for work, the Ranger for pets, and more. See who you've met in the Loot tab.",
+  },
+  {
     id: "2026-11-trail-loot",
     title: "New: trail loot and titles.",
     body: "Every drop is now a small, real reward you can give yourself, and your level has a title. See yours just above.",

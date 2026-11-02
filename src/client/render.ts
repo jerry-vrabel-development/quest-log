@@ -1,6 +1,7 @@
 /** Renders the HUD and the current tab. */
 import { daysBetween } from "../core/dates";
 import { byCategory, nowView, rollMissed, upcoming } from "../core/quests";
+import { COMPANIONS, foundFrom, handedBy, packSize } from "../core/party";
 import { bestStreak, level, levelTitle, streak } from "../core/rules";
 import { comebackFor } from "../core/streaks";
 import type { Quest } from "../core/types";
@@ -129,10 +130,29 @@ function renderLoot(box: HTMLElement): void {
     S.inv.length ? ` · ${counts.legendary || 0} legendary, ${counts.epic || 0} epic, ${counts.rare || 0} rare` : "";
   box.append(el("h2", "", `Loot bag · ${S.inv.length} items${summary}`));
   if (!S.inv.length) box.append(el("div", "empty", "Nothing yet. Complete a quest and roll the dice."));
+  // The Party (#31): how much of each companion's pack you've found, for the ones you've met.
+  const met = COMPANIONS.filter((c) => foundFrom(S.inv, c.id) > 0);
+  if (met.length) {
+    const party = el("ul", "party");
+    party.setAttribute("aria-label", "Found from each companion");
+    for (const c of met) {
+      party.append(
+        el(
+          "li",
+          "",
+          `${c.icon} ${c.name.replace(/^The /, "")} · ${String(foundFrom(S.inv, c.id))} of ${String(packSize(c.id))}`,
+        ),
+      );
+    }
+    box.append(party);
+  }
   const grid = el("div", "inv");
   for (const it of S.inv.slice(0, 120)) {
     const d = el("div", "item r-" + it.rar);
+    const from = handedBy(it);
     d.append(el("b", "", it.n), el("span", "", it.d));
+    // The rarity in words too, not only its color (#17).
+    d.append(el("small", "item-from", from ? `${it.rar} · ${from}` : it.rar));
     if (it.at) d.append(el("small", "", " " + new Date(it.at).toLocaleDateString()));
     grid.append(d);
   }

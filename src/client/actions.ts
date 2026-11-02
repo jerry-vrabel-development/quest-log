@@ -17,9 +17,10 @@ import {
   uncompleteQuest,
 } from "../core/rules";
 import { chooseMemory, markSeen, memoryChance, type Memory } from "../core/memories";
+import { companionFor, handedBy, timesFound } from "../core/party";
 import { checkBadges, type EarnedBadge } from "../core/stats";
 import { comebackFor, type Comeback } from "../core/streaks";
-import type { Quest } from "../core/types";
+import type { LootItem, Quest } from "../core/types";
 import { celebrate } from "./celebration";
 import { inviteMoment, momentAvailable } from "./moments";
 import { render } from "./render";
@@ -73,6 +74,13 @@ function pickMemory(m: {
   return memory;
 }
 
+/** A drop as a toast: who handed it over, and "found again" when it's a repeat. */
+function lootToast(item: LootItem): ToastItem {
+  const times = timesFound(S.inv, item.n);
+  const title = times > 1 ? `${item.n} · found again ×${String(times)}` : item.n;
+  return [item.rar, title, item.d, handedBy(item) ?? undefined];
+}
+
 /** Steps 2 and 3: roll loot, check badges, pick a memory, save, render, and celebrate. */
 function reward(
   before: Before,
@@ -88,8 +96,12 @@ function reward(
   const t = today();
   const lowDay = isLowDay(S.moods, t);
   const comeback = xp > 0 ? before.comeback : null;
+  // Quests get loot from their area's companion; check-ins and Frozen? from the Guide (#31).
+  const by = kind === "quest" ? companionFor(area).id : "guide";
   const item =
-    xp > 0 ? rollLoot(S, Math.random, Date.now(), guaranteedDrop({ repeatCount, lowDay, comeback: !!comeback })) : null;
+    xp > 0 ?
+      rollLoot(S, Math.random, Date.now(), guaranteedDrop({ repeatCount, lowDay, comeback: !!comeback }), by)
+    : null;
   const badges = checkBadges(S, when());
 
   const levelAfter = level(S.xp).l;
@@ -122,7 +134,7 @@ function reward(
       title ? `You're a ${title} now.` : "You're moving. Keep it gentle.",
     ]);
   }
-  if (item) toasts.push([item.rar, item.n, item.d]);
+  if (item) toasts.push(lootToast(item));
   toasts.push(...badges.map(badgeToast));
   if (!toasts.length && xp > 0) toasts.push([`+${xp} xp`, "Nice.", "No drop this time. The next one might be big."]);
   celebrate({ celebration, item, toasts, memory });
@@ -167,8 +179,10 @@ export function processRewards(): void {
       items.map((r) => r.name).join(" · "),
     ],
   ];
-  const drops = items.map(() => rollLoot(S, Math.random, Date.now(), lowDay)).filter((it) => it !== null);
-  for (const it of drops) toasts.push([it.rar, it.n, it.d]);
+  const drops = items
+    .map((r) => rollLoot(S, Math.random, Date.now(), lowDay, companionFor(r.g).id))
+    .filter((it) => it !== null);
+  for (const it of drops) toasts.push(lootToast(it));
   const badges = checkBadges(S, when());
   toasts.push(...badges.map(badgeToast));
   save();

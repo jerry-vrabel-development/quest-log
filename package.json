@@ -7,6 +7,7 @@
     "build": "node scripts/build.mjs",
     "build:watch": "node scripts/build.mjs --watch",
     "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
     "types": "wrangler types --env-interface Env --strict-vars=false",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -20,6 +21,7 @@
     "serve:static": "node scripts/serve-static.mjs",
     "vapid": "node scripts/gen-vapid.mjs",
     "db:init": "wrangler d1 execute quest-log --remote --file=schema.sql",
+    "db:init:staging": "wrangler d1 execute quest-log-staging --remote --env staging --file=schema.sql",
     "db:init:local": "wrangler d1 execute quest-log --local --file=schema.sql"
   },
   "devDependencies": {

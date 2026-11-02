@@ -31,6 +31,8 @@ jobs:
       - run: npm run test:coverage
       - name: Build and bundle the Worker
         run: npx wrangler deploy --dry-run --outdir dist
+      - name: Bundle the staging Worker (#25)
+        run: npx wrangler deploy --dry-run --env staging --outdir dist/staging
 
   e2e:
     name: Browser tests

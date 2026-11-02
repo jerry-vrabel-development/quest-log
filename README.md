@@ -157,7 +157,7 @@ CI runs everything on every push and pull request, including a check that `worke
 
 ## Branches
 
-`feature/*` → pull request into `dev` → pull request into `main`. Both `main` and `dev` are protected: changes land only through pull requests with CI green. Pushing to `main` deploys production.
+`feature/*` → pull request into `dev` → pull request into `main`. Both `main` and `dev` are protected: changes land only through pull requests with CI green. Merging to `main` deploys production; merging to `dev` deploys [staging](#staging).
 
 ## Claude connector (MCP)
 
@@ -207,6 +207,24 @@ npm run deploy
 ```
 
 Also set `VAPID_SUBJECT` in `wrangler.jsonc` to an email address you check.
+
+## Staging
+
+A second Worker, `quest-log-staging`, runs the `dev` branch so changes can be tried on a real Cloudflare deployment before they reach `main`. It has its own D1 database, OAuth KV, R2 bucket, rate-limit counters and push keys (`env.staging` in `wrangler.jsonc`), so nothing done on staging touches production data. Sync codes, connector grants and moments from production don't exist there, and the reverse.
+
+One-time setup:
+
+```bash
+npx wrangler d1 create quest-log-staging            # database_id → env.staging in wrangler.jsonc
+npx wrangler kv namespace create quest-log-oauth-staging   # id → env.staging
+npx wrangler r2 bucket create quest-log-media-staging
+npm run vapid                                       # a separate key pair: public key → env.staging.vars
+npm run db:init:staging
+npm run deploy:staging
+npx wrangler secret put VAPID_PRIVATE_JWK --env staging
+```
+
+Then connect the `quest-log-staging` Worker to this repository in the Cloudflare dashboard (Settings → Build), with `dev` as its production branch and `npx wrangler deploy --env staging` as the deploy command. After that, every merge into `dev` deploys staging.
 
 ## Local development
 

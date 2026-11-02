@@ -1,5 +1,5 @@
-// Offline use and the service worker update flow (#97). Every other spec blocks the service worker
-// for stable tests, so this is the one place the README's "works offline" promise is checked.
+// The service worker (#97): offline use, the update flow and push. Every other spec blocks the
+// service worker for stable tests, so this is the one place those promises are checked.
 import { expect, test, type Page } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -18,9 +18,9 @@ test.beforeEach(async ({ page }) => {
  * A private copy of the static server on its own port. Going offline means stopping it: Playwright's
  * setOffline doesn't cover requests the service worker makes in Chromium, so it can't prove the cache works.
  */
-async function startServer(port: number): Promise<ChildProcess> {
+async function startServer(port: number, env: Record<string, string> = {}): Promise<ChildProcess> {
   const server = spawn(process.execPath, [fileURLToPath(new URL("../scripts/serve-static.mjs", import.meta.url))], {
-    env: { ...process.env, PORT: String(port) },
+    env: { ...process.env, ...env, PORT: String(port) },
     stdio: ["ignore", "pipe", "inherit"],
   });
   await new Promise<void>((resolve, reject) => {
@@ -107,4 +107,45 @@ test("update: a new build takes over and the old cache is deleted", async ({ pag
 
   // The page is now controlled by the new worker.
   expect(await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL)).toContain("/sw.js");
+});
+
+test("push: an empty push shows the waiting notifications from the outbox", async ({ page, browserName }, info) => {
+  test.skip(browserName !== "chromium", "Delivering a push message needs the Chrome DevTools Protocol (Chromium only)");
+  const port = 4300 + info.parallelIndex;
+  const origin = `http://localhost:${String(port)}`;
+  const outbox = { items: [{ title: "Walk Bash", body: "Leash on, out the door", tag: "q-4" }] };
+  const server = await startServer(port, { TEST_OUTBOX: JSON.stringify(outbox), TEST_SYNC_CODE: "test-sync-code" });
+  try {
+    await page.context().grantPermissions(["notifications"], { origin });
+    const cdp = await page.context().newCDPSession(page);
+    const registrationId = new Promise<string>((resolve) => {
+      cdp.on("ServiceWorker.workerRegistrationUpdated", ({ registrations }) => {
+        const reg = registrations.find((r) => r.scopeURL.startsWith(origin) && !r.isDeleted);
+        if (reg) resolve(reg.registrationId);
+      });
+    });
+    await cdp.send("ServiceWorker.enable");
+
+    await page.goto(origin + "/");
+    await waitForOfflineReady(page);
+    // What the app stores when sync is on: the code the service worker uses to fetch the outbox.
+    await page.evaluate(async () => {
+      const c = await caches.open("quest-log-config");
+      await c.put("/__config", new Response(JSON.stringify({ code: "test-sync-code" })));
+    });
+
+    // The server's push carries no payload; the worker has to fetch what to show.
+    await cdp.send("ServiceWorker.deliverPushMessage", { origin, registrationId: await registrationId, data: "" });
+
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const reg = await navigator.serviceWorker.ready;
+          return (await reg.getNotifications()).map((n) => ({ title: n.title, body: n.body, tag: n.tag }));
+        }),
+      )
+      .toEqual(outbox.items);
+  } finally {
+    await stopServer(server);
+  }
 });

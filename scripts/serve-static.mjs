@@ -48,7 +48,13 @@ createServer(async (req, res) => {
     return;
   }
   try {
-    const body = await readFile(file);
+    let body = await readFile(file);
+    // Test hook for the service worker update test (#97): a `sw-build` cookie serves sw.js as if it
+    // were a new build, by swapping the build id in its cache name. Only this test server does this.
+    const nextBuild = /(?:^|;\s*)sw-build=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1];
+    if (path === "/sw.js" && nextBuild) {
+      body = Buffer.from(body.toString("utf8").replace(/quest-log-(?!config)[\w-]+/, `quest-log-${nextBuild}`));
+    }
     res.writeHead(200, { ...HEADERS, "content-type": TYPES[extname(file)] || "application/octet-stream" });
     res.end(body);
   } catch {
